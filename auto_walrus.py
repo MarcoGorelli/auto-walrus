@@ -1,23 +1,30 @@
 from __future__ import annotations
+
+import argparse
+import ast
 import sys
 from typing import Sequence
-import argparse
-import os
-import ast
 
 SEP_SYMBOLS = frozenset(('(', ')', ',', ':'))
+
 
 def first3(tokens):
     if isinstance(tokens, list):
         return [(i[0], i[1], i[2]) for i in tokens]
     return (tokens[0], tokens[1], tokens[2])
 
+
 def find_names(node, end_lineno=None, end_col_offset=None):
     names = set()
     for _node in ast.walk(node):
         if isinstance(_node, ast.Name):
-            names.add((_node.id, _node.lineno, _node.col_offset, end_lineno or _node.end_lineno, end_col_offset or _node.end_col_offset))
+            names.add((
+                _node.id, _node.lineno, _node.col_offset,
+                end_lineno or _node.end_lineno,
+                end_col_offset or _node.end_col_offset,
+            ))
     return names
+
 
 def visit_function_def(node):
     # record variable names
@@ -26,14 +33,21 @@ def visit_function_def(node):
     ifs = set()
     for _node in ast.walk(node):
         names.update(find_names(_node))
-    
+
     related_vars = {}
 
     for _node in node.body:
         if isinstance(_node, ast.Assign):
-            if len(_node.targets) == 1 and isinstance(_node.targets[0], ast.Name):
+            if (
+                len(_node.targets) == 1
+                and isinstance(_node.targets[0], ast.Name)
+            ):
                 target = _node.targets[0]
-                assignments.update(find_names(target, _node.end_lineno, _node.end_col_offset))
+                assignments.update(
+                    find_names(
+                        target, _node.end_lineno, _node.end_col_offset,
+                    ),
+                )
                 related_vars[target.id] = list(find_names(_node.value))
         elif isinstance(_node, ast.If):
             ifs.update(find_names(_node.test))
@@ -41,7 +55,7 @@ def visit_function_def(node):
                 ifs.update(find_names(__node.test))
         elif isinstance(_node, (ast.If, ast.While)):
             ifs.update(find_names(_node.test))
-    
+
     names = sorted(names, key=lambda x: (x[1], x[2]))
     assignments = sorted(assignments, key=lambda x: (x[1], x[2]))
     ifs = sorted(ifs, key=lambda x: (x[1], x[2]))
@@ -63,12 +77,18 @@ def visit_function_def(node):
             # rhs appear there as well! else, the location of the
             # assignment might change the code
 
-            this_vars_assignments = [first3(i) for i in assignments if i[0] == ass[0]]
+            this_vars_assignments = [
+                first3(i)
+                for i in assignments if i[0] == ass[0]
+            ]
             this_vars_names = [first3(i) for i in names if i[0] == ass[0]]
             if (
-                (len(this_vars_assignments) == 1)  # check it's the variable's only assignment
-                and (this_vars_names[0] == first3(ass))  # check this is the first usage of this name
-                and len(this_vars_names) > 2  # check it's used at least somewhere else
+                # check it's the variable's only assignment
+                (len(this_vars_assignments) == 1)
+                # check this is the first usage of this name
+                and (this_vars_names[0] == first3(ass))
+                # check it's used at least somewhere else
+                and len(this_vars_names) > 2
             ):
                 # Check that names which appear in the assignment aren't used
                 # between assignment and if-statement. Otherwise, the rewrite
@@ -86,8 +106,9 @@ def visit_function_def(node):
                 walrus.append((ass, ifass))
     return walrus
 
+
 def auto_walrus(content, path, line_length):
-    lines = content.splitlines() 
+    lines = content.splitlines()
     try:
         tree = ast.parse(content)
     except SyntaxError:  # pragma: no cover
@@ -116,7 +137,9 @@ def auto_walrus(content, path, line_length):
         # and we don't rewrite if we exceed the line-length
         left_bit = line[:if_[2]]
         right_bit = line[if_[4]:]
-        no_paren = any(left_bit.endswith(i) for i in SEP_SYMBOLS) and any(right_bit.startswith(i) for i in SEP_SYMBOLS)
+        no_paren = any(left_bit.endswith(i) for i in SEP_SYMBOLS) and any(
+            right_bit.startswith(i) for i in SEP_SYMBOLS
+        )
         replace = txt.replace('=', ':=')
         if no_paren:
             line = left_bit + replace + right_bit
@@ -126,14 +149,21 @@ def auto_walrus(content, path, line_length):
             # don't rewrite if it would split over multiple lines
             continue
         # replace assignment
-        lines[ass[1]-1] = f'{lines[ass[1]-1][:ass[2]]}{lines[ass[1]-1][ass[4]:]}'
+        lines[
+            ass[1] -
+            1
+        ] = f'{lines[ass[1]-1][:ass[2]]}{lines[ass[1]-1][ass[4]:]}'
         # add walrus
         lines[if_[1]-1] = line
         # remove empty line
         if not lines[ass[1]-1].strip():
             lines_to_remove.append(ass[1]-1)
 
-    newlines = [line for i, line in enumerate(lines) if i not in lines_to_remove]
+    newlines = [
+        line for i, line in enumerate(
+            lines,
+        ) if i not in lines_to_remove
+    ]
     newcontent = '\n'.join(newlines)
     if newcontent and content.endswith('\n'):
         newcontent += '\n'
@@ -141,10 +171,12 @@ def auto_walrus(content, path, line_length):
         return newcontent
     return None
 
+
 def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
     parser = argparse.ArgumentParser()
     parser.add_argument('paths', nargs='*')
-    parser.add_argument('--line-length', type=int, default=88)  # black formatter's default
+    # black formatter's default
+    parser.add_argument('--line-length', type=int, default=88)
     args = parser.parse_args(argv)
     ret = 0
     for path in args.paths:
