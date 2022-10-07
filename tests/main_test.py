@@ -18,6 +18,19 @@ from auto_walrus import auto_walrus
         (
             'def foo():\n'
             '    a = 0\n'
+            '    if a:\n'
+            '        print(a)\n'
+            '    else:\n'
+            '        pass\n',
+            'def foo():\n'
+            '    if (a := 0):\n'
+            '        print(a)\n'
+            '    else:\n'
+            '        pass\n',
+        ),
+        (
+            'def foo():\n'
+            '    a = 0\n'
             '    if True:\n'
             '        print(1)\n'
             '    elif a:\n'
@@ -70,7 +83,7 @@ from auto_walrus import auto_walrus
     ],
 )
 def test_rewrite(src: str, expected: str) -> None:
-    ret = auto_walrus(src, 88)
+    ret = auto_walrus(src, 't.py', 88)
     assert ret == expected
 
 
@@ -105,5 +118,5 @@ def test_rewrite(src: str, expected: str) -> None:
     ],
 )
 def test_noop(src: str) -> None:
-    ret = auto_walrus(src, 20)
+    ret = auto_walrus(src, 't.py', 20)
     assert ret is None

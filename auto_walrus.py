@@ -26,7 +26,7 @@ def find_names(node, end_lineno=None, end_col_offset=None):
     return names
 
 
-def visit_function_def(node):
+def visit_function_def(node, path):
     names = set()
     assignments = set()
     ifs = set()
@@ -51,7 +51,8 @@ def visit_function_def(node):
         elif isinstance(_node, ast.If):
             ifs.update(find_names(_node.test))
             for __node in _node.orelse:
-                ifs.update(find_names(__node.test))
+                if isinstance(__node, ast.If):
+                    ifs.update(find_names(__node.test))
         elif isinstance(_node, (ast.If, ast.While)):
             ifs.update(find_names(_node.test))
 
@@ -111,7 +112,7 @@ def visit_function_def(node):
     return walrus
 
 
-def auto_walrus(content, line_length):
+def auto_walrus(content, path, line_length):
     lines = content.splitlines()
     try:
         tree = ast.parse(content)
@@ -121,7 +122,7 @@ def auto_walrus(content, line_length):
     walruses = []
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
-            walruses.extend(visit_function_def(node))
+            walruses.extend(visit_function_def(node, path))
     lines_to_remove = []
     walruses = sorted(walruses, key=lambda x: (-x[1][1], -x[1][2]))
 
@@ -183,7 +184,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
     for path in args.paths:
         with open(path, encoding='utf-8') as fd:
             content = fd.read()
-        new_content = auto_walrus(content, line_length=args.line_length)
+        new_content = auto_walrus(content, path, line_length=args.line_length)
         if new_content is not None and content != new_content:
             sys.stdout.write(f'Rewriting {path}\n')
             with open(path, 'w') as fd:
