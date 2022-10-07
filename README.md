@@ -12,7 +12,9 @@ A tool and pre-commit hook to automatically apply the awesome walrus operator.
 
 ## Installation
 
-PyPI: coming soon!
+```console
+$ pip install auto-walrus
+```
 
 ## Usage as a pre-commit hook
 
@@ -29,7 +31,15 @@ Sample `.pre-commit-config.yaml`:
 
 ## Command-line example
 
-(coming soon)
+```console
+$ auto-walrus myfile.py
+```
+
+```diff
+-    n = len(a)
+-    if n > 10:
++    if (n := len(a)) > 10:
+```
 
 ## Configuration
 
