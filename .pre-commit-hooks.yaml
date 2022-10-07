@@ -1,0 +1,6 @@
+-   id: auto-walrus
+    name: auto-walrus
+    description: Automatically use the walrus operator!
+    entry: auto-walrus
+    language: python
+    types: [python]
