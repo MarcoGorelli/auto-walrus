@@ -1,9 +1,6 @@
-<<<<<<< HEAD
 # auto-walrus
 Automatically use the walrus operator where possible
 
-Coming soon!
-=======
 [![Build Status](https://github.com/MarcoGorelli/auto-walrus/workflows/tox/badge.svg)](https://github.com/MarcoGorelli/auto-walrus/actions?workflow=tox)
 [![Coverage](https://codecov.io/gh/MarcoGorelli/auto-walrus/branch/main/graph/badge.svg)](https://codecov.io/gh/MarcoGorelli/auto-walrus)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/MarcoGorelli/auto-walrus/main.svg)](https://results.pre-commit.ci/latest/github/MarcoGorelli/auto-walrus/main)
@@ -15,9 +12,7 @@ A tool and pre-commit hook to automatically apply the awesome walrus operator.
 
 ## Installation
 
-```console
-$ pip install auto-walrus
-```
+PyPI: coming soon!
 
 ## Usage as a pre-commit hook
 
@@ -40,4 +35,3 @@ Sample `.pre-commit-config.yaml`:
 
 Using the walrus operator can result in longer lines. Lines longer than what you
 pass to ``--line-length`` won't be rewritten to use walrus operators.
->>>>>>> 480e04c (init)
