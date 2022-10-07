@@ -23,11 +23,19 @@ def visit_function_def(node):
     for _node in ast.walk(node):
         names.update(find_names(_node))
     
+    related_vars = {}
+
     for _node in node.body:
         if isinstance(_node, ast.Assign):
             if len(_node.targets) == 1 and isinstance(_node.targets[0], ast.Name):
                 target = _node.targets[0]
                 assignments.update(find_names(target, _node.end_lineno, _node.end_col_offset))
+                related_vars[target.id] = list(find_names(_node.value))
+        elif isinstance(_node, ast.If):
+            ifs.update(find_names(_node.test))
+            for __node in _node.orelse:
+                if isinstance(__node, ast.If):
+                    ifs.update(find_names(__node.test))
         elif isinstance(_node, (ast.If, ast.While)):
             ifs.update(find_names(_node.test))
     
@@ -47,10 +55,31 @@ def visit_function_def(node):
         # and if statement
         if ass[0] not in [names[i][0] for i in range(asspos+1, ifpos)]:
             # check the assignment was the variable's first usage
+
+            # probably also need to check that none of the names in the
+            # rhs appear there as well! else, the location of the
+            # assignment might change the code
+
             this_vars_assignments = [first3(i) for i in assignments if i[0] == ass[0]]
             this_vars_names = [first3(i) for i in names if i[0] == ass[0]]
-            if (len(this_vars_assignments) == 1) and (this_vars_names[0] == first3(ass)) and len(this_vars_names) > 2:
-                # check it's actually used again, else no point in walrusing
+            if (
+                (len(this_vars_assignments) == 1)  # check it's the variable's only assignment
+                and (this_vars_names[0] == first3(ass))  # check this is the first usage of this name
+                and len(this_vars_names) > 2  # check it's used at least somewhere else
+            ):
+                # Check that names which appear in the assignment aren't used
+                # between assignment and if-statement. Otherwise, the rewrite
+                # might be unsafe.
+                related = related_vars[ass[0]]
+                should_break = False
+                for rel in related:
+                    usages = [i for i in names if i[0] == rel[0] if i != rel]
+                    for usage in usages:
+                        rel_used_pos = first3(names).index(first3(usage))
+                        if asspos < rel_used_pos < ifpos:
+                            should_break = True
+                if should_break:
+                    continue
                 walrus.append((ass, ifass))
     return walrus
     # check:
