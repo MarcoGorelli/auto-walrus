@@ -1,0 +1,9 @@
+.coverage
+venv
+*.pyc
+.tox
+coverage.xml
+*.egg-info/
+build/
+dist/
+todo
