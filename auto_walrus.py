@@ -1,7 +1,11 @@
+from __future__ import annotations
+import sys
+from typing import Sequence
+import argparse
+import os
 import ast
-from tokenize_rt import src_to_tokens, tokens_to_src, reversed_enumerate
 
-LINE_LENGTH = 88
+SEP_SYMBOLS = frozenset(('(', ')', ',', ':'))
 
 def first3(tokens):
     if isinstance(tokens, list):
@@ -34,8 +38,7 @@ def visit_function_def(node):
         elif isinstance(_node, ast.If):
             ifs.update(find_names(_node.test))
             for __node in _node.orelse:
-                if isinstance(__node, ast.If):
-                    ifs.update(find_names(__node.test))
+                ifs.update(find_names(__node.test))
         elif isinstance(_node, (ast.If, ast.While)):
             ifs.update(find_names(_node.test))
     
@@ -82,22 +85,24 @@ def visit_function_def(node):
                     continue
                 walrus.append((ass, ifass))
     return walrus
-    # check:
-    # variable is assigned to
-    # if it then used in an if statement
-    # it is not used anywhere in between
 
-def main(file):
-    with open(file) as fd:
-        content = fd.read()
+def auto_walrus(content, path, line_length):
     lines = content.splitlines() 
-    tree = ast.parse(content)
+    try:
+        tree = ast.parse(content)
+    except SyntaxError:  # pragma: no cover
+        return 0
+
     walruses = []
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
             walruses.extend(visit_function_def(node))
     lines_to_remove = []
     walruses = sorted(walruses, key=lambda x: (-x[1][1], -x[1][2]))
+
+    if not walruses:
+        return None
+
     for ass, if_ in walruses:
         if ass[1] != ass[3]:
             continue
@@ -111,13 +116,13 @@ def main(file):
         # and we don't rewrite if we exceed the line-length
         left_bit = line[:if_[2]]
         right_bit = line[if_[4]:]
-        no_paren = left_bit.endswith('(') and right_bit.startswith(')')
+        no_paren = any(left_bit.endswith(i) for i in SEP_SYMBOLS) and any(right_bit.startswith(i) for i in SEP_SYMBOLS)
         replace = txt.replace('=', ':=')
         if no_paren:
             line = left_bit + replace + right_bit
         else:
             line = left_bit + '(' + replace + ')' + right_bit
-        if len(line) > LINE_LENGTH:
+        if len(line) > line_length:
             # don't rewrite if it would split over multiple lines
             continue
         # replace assignment
@@ -130,12 +135,29 @@ def main(file):
 
     newlines = [line for i, line in enumerate(lines) if i not in lines_to_remove]
     newcontent = '\n'.join(newlines)
-    if newcontent:
+    if newcontent and content.endswith('\n'):
         newcontent += '\n'
-    with open(file, 'w') as fd:
-        fd.write(newcontent)
+    if newcontent != content:
+        return newcontent
+    return None
+
+def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
+    parser = argparse.ArgumentParser()
+    parser.add_argument('paths', nargs='*')
+    parser.add_argument('--line-length', type=int, default=88)  # black formatter's default
+    args = parser.parse_args(argv)
+    ret = 0
+    for path in args.paths:
+        with open(path, encoding='utf-8') as fd:
+            content = fd.read()
+        new_content = auto_walrus(content, path, line_length=args.line_length)
+        if new_content is not None and content != new_content:
+            sys.stdout.write(f'Rewriting {path}')
+            with open(path, 'w') as fd:
+                fd.write(new_content)
+            ret = 1
+    return ret
+
 
 if __name__ == '__main__':
-    import sys
-    for file in sys.argv[1:]:
-        main(file)
+    sys.exit(main())
