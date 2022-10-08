@@ -1,5 +1,14 @@
-# auto-walrus
-Automatically use the walrus operator where possible
+<h1 align="center">
+auto-walrus
+</h1>
+
+<p align="center">
+<img width="458" alt="auto-walrus" src="https://user-images.githubusercontent.com/33491632/194700764-9b9ace34-62c2-403e-9141-edd0e38e8943.png">
+</p>
+
+<p align="center">
+Automatically apply the walrus operator where possible
+</p>
 
 [![Build Status](https://github.com/MarcoGorelli/auto-walrus/workflows/tox/badge.svg)](https://github.com/MarcoGorelli/auto-walrus/actions?workflow=tox)
 [![Coverage](https://codecov.io/gh/MarcoGorelli/auto-walrus/branch/main/graph/badge.svg)](https://codecov.io/gh/MarcoGorelli/auto-walrus)
