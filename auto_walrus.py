@@ -26,12 +26,22 @@ def record_name_lineno_coloffset(
     end_lineno: int | None = None,
     end_col_offset: int | None = None,
 ) -> Token:
+    if end_lineno is None:
+        assert node.end_lineno is not None
+        _end_lineno = node.end_lineno
+    else:
+        _end_lineno = end_lineno
+    if end_col_offset is None:
+        assert node.end_col_offset is not None
+        _end_col_offset = node.end_col_offset
+    else:
+        _end_col_offset = end_col_offset
     return (
         node.id,
         node.lineno,
         node.col_offset,
-        end_lineno or node.end_lineno,  # type: ignore
-        end_col_offset or node.end_col_offset,  # type: ignore
+        _end_lineno,
+        _end_col_offset,
     )
 
 
