@@ -3,18 +3,30 @@ from __future__ import annotations
 import argparse
 import ast
 import sys
+from typing import Any
 from typing import Sequence
+from typing import Tuple
 
 SEP_SYMBOLS = frozenset(('(', ')', ',', ':'))
+# name, lineno, col_offset, end_lineno, end_col_offset
+Token = Tuple[str, int, int, int, int]
 
 
-def name_lineno_coloffset(tokens):
-    if isinstance(tokens, list):
-        return [(i[0], i[1], i[2]) for i in tokens]
+def name_lineno_coloffset_list(
+    tokens: list[Token],
+) -> list[tuple[str, int, int]]:
+    return [(i[0], i[1], i[2]) for i in tokens]
+
+
+def name_lineno_coloffset(tokens: Token) -> tuple[str, int, int]:
     return (tokens[0], tokens[1], tokens[2])
 
 
-def record_name_lineno_coloffset(node, end_lineno=None, end_col_offset=None):
+def record_name_lineno_coloffset(
+    node: Any,
+    end_lineno: int | None = None,
+    end_col_offset: int | None = None,
+) -> Token:
     return (
         node.id, node.lineno, node.col_offset,
         end_lineno or node.end_lineno,
@@ -22,7 +34,11 @@ def record_name_lineno_coloffset(node, end_lineno=None, end_col_offset=None):
     )
 
 
-def find_names(node, end_lineno=None, end_col_offset=None):
+def find_names(
+    node: Any,
+    end_lineno: int | None = None,
+    end_col_offset: int | None = None,
+) -> set[Token]:
     names = set()
     for _node in ast.walk(node):
         if isinstance(_node, ast.Name):
@@ -34,7 +50,7 @@ def find_names(node, end_lineno=None, end_col_offset=None):
     return names
 
 
-def visit_function_def(node, path):
+def visit_function_def(node: Any, path: str) -> list[tuple[Token, Token]]:
     names = set()
     assignments = set()
     ifs = set()
@@ -64,35 +80,35 @@ def visit_function_def(node, path):
         elif isinstance(_node, (ast.If, ast.While)):
             ifs.update(find_names(_node.test))
 
-    names = sorted(names, key=lambda x: (x[1], x[2]))
-    assignments = sorted(assignments, key=lambda x: (x[1], x[2]))
-    ifs = sorted(ifs, key=lambda x: (x[1], x[2]))
+    sorted_names = sorted(names, key=lambda x: (x[1], x[2]))
+    sorted_assignments = sorted(assignments, key=lambda x: (x[1], x[2]))
+    sorted_ifs = sorted(ifs, key=lambda x: (x[1], x[2]))
     walrus = []
 
-    for _assignment in assignments:
-        _if_statements = [i for i in ifs if i[0] == _assignment[0]]
+    for _assignment in sorted_assignments:
+        _if_statements = [i for i in sorted_ifs if i[0] == _assignment[0]]
         if len(_if_statements) != 1:
             continue
         _if_statement = _if_statements[0]
-        assignment_idx = name_lineno_coloffset(
-            names,
+        assignment_idx = name_lineno_coloffset_list(
+            sorted_names,
         ).index(name_lineno_coloffset(_assignment))
-        if_statement_idx = name_lineno_coloffset(
-            names,
+        if_statement_idx = name_lineno_coloffset_list(
+            sorted_names,
         ).index(name_lineno_coloffset(_if_statement))
         _other_assignments = [
             name_lineno_coloffset(i)
-            for i in assignments if i[0] == _assignment[0]
+            for i in sorted_assignments if i[0] == _assignment[0]
         ]
         _other_usages = [
             name_lineno_coloffset(
                 i,
-            ) for i in names if i[0] == _assignment[0]
+            ) for i in sorted_names if i[0] == _assignment[0]
         ]
         if (
             # check name doesn't appear between assignment and if statement
             _assignment[0] not in [
-                names[i][0]
+                sorted_names[i][0]
                 for i in range(assignment_idx+1, if_statement_idx)
             ]
             # check it's the variable's only assignment
@@ -107,10 +123,13 @@ def visit_function_def(node, path):
             related = related_vars[_assignment[0]]
             should_break = False
             for rel in related:
-                usages = [i for i in names if i[0] == rel[0] if i != rel]
+                usages = [
+                    i for i in sorted_names if i[0]
+                    == rel[0] if i != rel
+                ]
                 for usage in usages:
-                    rel_used_idx = name_lineno_coloffset(
-                        names,
+                    rel_used_idx = name_lineno_coloffset_list(
+                        sorted_names,
                     ).index(name_lineno_coloffset(usage))
                     if assignment_idx < rel_used_idx < if_statement_idx:
                         should_break = True
@@ -120,12 +139,12 @@ def visit_function_def(node, path):
     return walrus
 
 
-def auto_walrus(content, path, line_length):
+def auto_walrus(content: str, path: str, line_length: int) -> str | None:
     lines = content.splitlines()
     try:
         tree = ast.parse(content)
     except SyntaxError:  # pragma: no cover
-        return 0
+        return None
 
     walruses = []
     for node in ast.walk(tree):
