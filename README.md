@@ -6,18 +6,15 @@ auto-walrus
 <img width="458" alt="auto-walrus" src="https://user-images.githubusercontent.com/33491632/194700764-9b9ace34-62c2-403e-9141-edd0e38e8943.png">
 </p>
 
-<p align="center">
-Automatically apply the walrus operator where possible
-</p>
-
+auto-walrus
+===========
 [![Build Status](https://github.com/MarcoGorelli/auto-walrus/workflows/tox/badge.svg)](https://github.com/MarcoGorelli/auto-walrus/actions?workflow=tox)
 [![Coverage](https://codecov.io/gh/MarcoGorelli/auto-walrus/branch/main/graph/badge.svg)](https://codecov.io/gh/MarcoGorelli/auto-walrus)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/MarcoGorelli/auto-walrus/main.svg)](https://results.pre-commit.ci/latest/github/MarcoGorelli/auto-walrus/main)
 
-auto-walrus
-===========
 
 A tool and pre-commit hook to automatically apply the awesome walrus operator.
+
 
 ## Installation
 
@@ -54,3 +51,8 @@ $ auto-walrus myfile.py
 
 Using the walrus operator can result in longer lines. Lines longer than what you
 pass to ``--line-length`` won't be rewritten to use walrus operators.
+
+E.g.
+```
+$ auto-walrus myfile_1.py myfile_2.py --line-length 89
+```
