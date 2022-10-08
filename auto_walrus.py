@@ -14,15 +14,23 @@ def name_lineno_coloffset(tokens):
     return (tokens[0], tokens[1], tokens[2])
 
 
+def record_name_lineno_coloffset(node, end_lineno=None, end_col_offset=None):
+    return (
+        node.id, node.lineno, node.col_offset,
+        end_lineno or node.end_lineno,
+        end_col_offset or node.end_col_offset,
+    )
+
+
 def find_names(node, end_lineno=None, end_col_offset=None):
     names = set()
     for _node in ast.walk(node):
         if isinstance(_node, ast.Name):
-            names.add((
-                _node.id, _node.lineno, _node.col_offset,
-                end_lineno or _node.end_lineno,
-                end_col_offset or _node.end_col_offset,
-            ))
+            names.add(
+                record_name_lineno_coloffset(
+                    _node, end_lineno, end_col_offset,
+                ),
+            )
     return names
 
 
@@ -42,8 +50,8 @@ def visit_function_def(node, path):
                 and isinstance(_node.targets[0], ast.Name)
             ):
                 target = _node.targets[0]
-                assignments.update(
-                    find_names(
+                assignments.add(
+                    record_name_lineno_coloffset(
                         target, _node.end_lineno, _node.end_col_offset,
                     ),
                 )
@@ -187,7 +195,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
         new_content = auto_walrus(content, path, line_length=args.line_length)
         if new_content is not None and content != new_content:
             sys.stdout.write(f'Rewriting {path}\n')
-            with open(path, 'w') as fd:
+            with open(path, 'w', encoding='utf-8') as fd:
                 fd.write(new_content)
             ret = 1
     return ret
