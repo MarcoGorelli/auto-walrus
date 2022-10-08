@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import ast
 import sys
-from typing import Any
 from typing import Sequence
 from typing import Tuple
 
@@ -23,19 +22,21 @@ def name_lineno_coloffset(tokens: Token) -> tuple[str, int, int]:
 
 
 def record_name_lineno_coloffset(
-    node: Any,
+    node: ast.Name,
     end_lineno: int | None = None,
     end_col_offset: int | None = None,
 ) -> Token:
     return (
-        node.id, node.lineno, node.col_offset,
-        end_lineno or node.end_lineno,
-        end_col_offset or node.end_col_offset,
+        node.id,
+        node.lineno,
+        node.col_offset,
+        end_lineno or node.end_lineno,  # type: ignore
+        end_col_offset or node.end_col_offset,  # type: ignore
     )
 
 
 def find_names(
-    node: Any,
+    node: ast.AST,
     end_lineno: int | None = None,
     end_col_offset: int | None = None,
 ) -> set[Token]:
@@ -50,7 +51,10 @@ def find_names(
     return names
 
 
-def visit_function_def(node: Any, path: str) -> list[tuple[Token, Token]]:
+def visit_function_def(
+    node: ast.FunctionDef,
+    path: str,
+) -> list[tuple[Token, Token]]:
     names = set()
     assignments = set()
     ifs = set()
