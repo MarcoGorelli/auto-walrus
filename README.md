@@ -19,7 +19,7 @@ A tool and pre-commit hook to automatically apply the awesome walrus operator.
 ## Installation
 
 ```console
-$ pip install auto-walrus
+pip install auto-walrus
 ```
 
 ## Usage as a pre-commit hook
@@ -38,7 +38,7 @@ Sample `.pre-commit-config.yaml`:
 ## Command-line example
 
 ```console
-$ auto-walrus myfile.py
+auto-walrus myfile.py
 ```
 
 ```diff
@@ -54,5 +54,5 @@ pass to ``--line-length`` won't be rewritten to use walrus operators.
 
 E.g.
 ```
-$ auto-walrus myfile_1.py myfile_2.py --line-length 89
+auto-walrus myfile_1.py myfile_2.py --line-length 89
 ```
