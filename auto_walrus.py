@@ -119,11 +119,6 @@ def visit_function_def(
                             __node.test,
                         ),
                     )
-        elif (
-            isinstance(_node, (ast.If, ast.While))
-            and is_simple_test(_node.test)
-        ):
-            ifs.update(find_names(_node.test))
 
     sorted_names = sorted(names, key=lambda x: (x[1], x[2]))
     sorted_assignments = sorted(assignments, key=lambda x: (x[1], x[2]))

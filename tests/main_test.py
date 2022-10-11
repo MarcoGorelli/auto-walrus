@@ -52,30 +52,30 @@ from auto_walrus import auto_walrus
             'def foo():\n'
             '    a = 0\n'
             '    print(0)\n'
-            '    while a:\n'
+            '    if a:\n'
             '        print(a)\n',
             'def foo():\n'
             '    print(0)\n'
-            '    while (a := 0):\n'
+            '    if (a := 0):\n'
             '        print(a)\n',
         ),
         (
             'def foo():\n'
             '    a = 0\n'
-            '    while (a):\n'
+            '    if (a):\n'
             '        print(a)\n',
             'def foo():\n'
-            '    while (a := 0):\n'
+            '    if (a := 0):\n'
             '        print(a)\n',
         ),
         (
             'def foo():\n'
             '    b = 0; a = 0\n'
-            '    while a:\n'
+            '    if a:\n'
             '        print(a)\n',
             'def foo():\n'
             '    b = 0; \n'
-            '    while (a := 0):\n'
+            '    if (a := 0):\n'
             '        print(a)\n',
         ),
         (
