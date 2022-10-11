@@ -277,8 +277,10 @@ def _set_ast_expression_types(
             ifs.update(find_names(_node.test))
 
 
-
-def _set_names(names: set[Token], node: ast.AST) -> None:
+def _set_names(
+    names: set[Token],
+    node: ast.AST,
+) -> None:
     for _node in ast.walk(node):
         if isinstance(_node, ast.Name):
             names.add(record_name_lineno_col_offset(_node))
