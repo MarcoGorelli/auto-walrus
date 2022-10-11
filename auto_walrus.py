@@ -14,20 +14,20 @@ COMMENT = '# no-walrus'
 SIMPLE_NODE = (ast.Name, ast.Constant)
 
 
-def name_lineno_coloffset_list(
-    tokens: list[Token],
+def name_lineno_col_offset_list(
+        tokens: list[Token],
 ) -> list[tuple[str, int, int]]:
-    return [(i[0], i[1], i[2]) for i in tokens]
+    return [(token[0], token[1], token[2]) for token in tokens]
 
 
-def name_lineno_coloffset(tokens: Token) -> tuple[str, int, int]:
-    return (tokens[0], tokens[1], tokens[2])
+def name_lineno_col_offset(tokens: Token) -> tuple[str, int, int]:
+    return tokens[0], tokens[1], tokens[2]
 
 
-def record_name_lineno_coloffset(
-    node: ast.Name,
-    end_lineno: int | None = None,
-    end_col_offset: int | None = None,
+def record_name_lineno_col_offset(
+        node: ast.Name,
+        end_lineno: int | None = None,
+        end_col_offset: int | None = None,
 ) -> Token:
     if end_lineno is None:
         assert node.end_lineno is not None
@@ -49,15 +49,15 @@ def record_name_lineno_coloffset(
 
 
 def find_names(
-    node: ast.AST,
-    end_lineno: int | None = None,
-    end_col_offset: int | None = None,
+        node: ast.AST,
+        end_lineno: int | None = None,
+        end_col_offset: int | None = None,
 ) -> set[Token]:
     names = set()
     for _node in ast.walk(node):
         if isinstance(_node, ast.Name):
             names.add(
-                record_name_lineno_coloffset(
+                record_name_lineno_col_offset(
                     _node, end_lineno, end_col_offset,
                 ),
             )
@@ -88,24 +88,175 @@ def visit_function_def(
     node: ast.FunctionDef | ast.Module,
     path: str,
 ) -> list[tuple[Token, Token]]:
-    names = set()
-    assignments = set()
-    ifs = set()
-    for _node in ast.walk(node):
-        if isinstance(_node, ast.Name):
-            names.add(record_name_lineno_coloffset(_node))
+    names: set[Token] = set()
+    assignments: set[Token] = set()
+    ifs: set[Token] = set()
+    related_vars: dict[str, list[Token]] = {}
 
-    related_vars = {}
+    _set_names(names, node)
 
-    for _node in node.body:
+    _set_ast_expression_types(assignments, ifs, node, related_vars)
+
+    sorted_assignments, sorted_ifs, \
+        sorted_names = _get_sorted_names_assignments_ifs(
+            assignments, ifs, names,
+        )
+    walrus = []
+
+    for _assignment in sorted_assignments:
+        _if_statements = [i for i in sorted_ifs if i[0] == _assignment[0]]
+        if len(_if_statements) != 1:
+            continue
+        _if_statement = _if_statements[0]
+        assignment_idx = _get_assignment_index(_assignment, sorted_names)
+        if_statement_idx = _get_if_statement_index(_if_statement, sorted_names)
+        _other_assignments = _get_other_assignments(
+            _assignment, sorted_assignments,
+        )
+        _other_usages = _get_other_usages(_assignment, sorted_names)
+        if (
+                _is_name_appears_between_assignment_and_if(
+                    _assignment, assignment_idx,
+                    if_statement_idx, sorted_names,
+                )
+                and _is_variable_only_assignment(_other_assignments)
+                and _is_name_used_first_time(_assignment, _other_usages)
+                and _is_name_used_elsewhere(_other_usages)
+        ):
+
+            related = related_vars[_assignment[0]]
+            should_break = False
+            should_break = _is_right_side_name_used_between_assignment_and_if(
+                assignment_idx, if_statement_idx, related,
+                should_break, sorted_names,
+            )
+            if should_break:
+                continue
+            walrus.append((_assignment, _if_statement))
+    return walrus
+
+
+def _get_sorted_names_assignments_ifs(
+    assignments: set[Token],
+    ifs: set[Token],
+    names: set[Token],
+) -> tuple[list[Token], list[Token], list[Token]]:
+    sorted_names = sorted(names, key=lambda x: (x[1], x[2]))
+    sorted_assignments = sorted(assignments, key=lambda x: (x[1], x[2]))
+    sorted_ifs = sorted(ifs, key=lambda x: (x[1], x[2]))
+    return sorted_assignments, sorted_ifs, sorted_names
+
+
+def _get_other_usages(
+    _assignment: Token,
+    sorted_names: list[Token],
+) -> list[tuple[str, int, int]]:
+    return [
+        name_lineno_col_offset(
+            name,
+        ) for name in sorted_names if name[0] == _assignment[0]
+    ]
+
+
+def _get_other_assignments(
+    _assignment: Token,
+    sorted_assignments: list[Token],
+) -> list[tuple[str, int, int]]:
+    return [
+        name_lineno_col_offset(assignment)
+        for assignment in sorted_assignments if assignment[0] == _assignment[0]
+    ]
+
+
+def _get_if_statement_index(
+    _if_statement: Token,
+    sorted_names: list[Token],
+) -> int:
+    return name_lineno_col_offset_list(
+        sorted_names,
+    ).index(name_lineno_col_offset(_if_statement))
+
+
+def _get_assignment_index(
+    _assignment: Token,
+    sorted_names: list[Token],
+) -> int:
+    return name_lineno_col_offset_list(
+        sorted_names,
+    ).index(name_lineno_col_offset(_assignment))
+
+
+def _is_right_side_name_used_between_assignment_and_if(
+    assignment_idx: int,
+    if_statement_idx: int,
+    related: list[Token],
+    should_break: bool,
+    sorted_names: list[Token],
+) -> bool:
+    # Check that names which appear in right hand side of
+    # assignment aren't used between assignment and if-statement.
+    for rel in related:
+        usages = [
+            name for name in sorted_names if name[0] == rel[0] if name != rel
+        ]
+        for usage in usages:
+            rel_used_idx = name_lineno_col_offset_list(
+                sorted_names,
+            ).index(name_lineno_col_offset(usage))
+            if assignment_idx < rel_used_idx < if_statement_idx:
+                should_break = True
+    return should_break
+
+
+def _is_name_appears_between_assignment_and_if(
+    _assignment: Token,
+    assignment_idx: int,
+    if_statement_idx: int,
+    sorted_names: list[Token],
+) -> bool:
+    # check name doesn't appear between assignment and if statement
+    return _assignment[0] not in [
+        sorted_names[i][0]
+        for i in range(assignment_idx + 1, if_statement_idx)
+    ]
+
+
+def _is_name_used_elsewhere(_other_usages: list[tuple[str, int, int]]) -> bool:
+    # check it's used at least somewhere else
+    return len(_other_usages) > 2
+
+
+def _is_name_used_first_time(
+    _assignment: Token,
+    _other_usages: list[tuple[str, int, int]],
+) -> bool:
+    # check this is the first usage of this name
+    return _other_usages[0] == name_lineno_col_offset(_assignment)
+
+
+def _is_variable_only_assignment(
+    _other_assignments: list[tuple[str, int, int]],
+
+) -> bool:
+    # check it's the variable's only assignment
+    return len(_other_assignments) == 1
+
+
+def _set_ast_expression_types(
+    assignments: set[Token],
+    ifs: set[Token],
+    node: ast.AST,
+    related_vars: dict[str, list[Token]],
+) -> None:
+    for _node in node.body:  # type: ignore
         if isinstance(_node, ast.Assign):
             if (
-                len(_node.targets) == 1
-                and isinstance(_node.targets[0], ast.Name)
+                    len(_node.targets) == 1
+                    and isinstance(_node.targets[0], ast.Name)
             ):
                 target = _node.targets[0]
                 assignments.add(
-                    record_name_lineno_coloffset(
+                    record_name_lineno_col_offset(
                         target, _node.end_lineno, _node.end_col_offset,
                     ),
                 )
@@ -125,63 +276,10 @@ def visit_function_def(
         ):
             ifs.update(find_names(_node.test))
 
-    sorted_names = sorted(names, key=lambda x: (x[1], x[2]))
-    sorted_assignments = sorted(assignments, key=lambda x: (x[1], x[2]))
-    sorted_ifs = sorted(ifs, key=lambda x: (x[1], x[2]))
-    walrus = []
 
-    for _assignment in sorted_assignments:
-        _if_statements = [i for i in sorted_ifs if i[0] == _assignment[0]]
-        if len(_if_statements) != 1:
-            continue
-        _if_statement = _if_statements[0]
-        assignment_idx = name_lineno_coloffset_list(
-            sorted_names,
-        ).index(name_lineno_coloffset(_assignment))
-        if_statement_idx = name_lineno_coloffset_list(
-            sorted_names,
-        ).index(name_lineno_coloffset(_if_statement))
-        _other_assignments = [
-            name_lineno_coloffset(i)
-            for i in sorted_assignments if i[0] == _assignment[0]
-        ]
-        _other_usages = [
-            name_lineno_coloffset(
-                i,
-            ) for i in sorted_names if i[0] == _assignment[0]
-        ]
-        if (
-            # check name doesn't appear between assignment and if statement
-            _assignment[0] not in [
-                sorted_names[i][0]
-                for i in range(assignment_idx+1, if_statement_idx)
-            ]
-            # check it's the variable's only assignment
-            and (len(_other_assignments) == 1)
-            # check this is the first usage of this name
-            and (_other_usages[0] == name_lineno_coloffset(_assignment))
-            # check it's used at least somewhere else
-            and len(_other_usages) > 2
-        ):
-            # Check that names which appear in right hand side of
-            # assignment aren't used between assignment and if-statement.
-            related = related_vars[_assignment[0]]
-            should_break = False
-            for rel in related:
-                usages = [
-                    i for i in sorted_names if i[0]
-                    == rel[0] if i != rel
-                ]
-                for usage in usages:
-                    rel_used_idx = name_lineno_coloffset_list(
-                        sorted_names,
-                    ).index(name_lineno_coloffset(usage))
-                    if assignment_idx < rel_used_idx < if_statement_idx:
-                        should_break = True
-            if should_break:
-                continue
-            walrus.append((_assignment, _if_statement))
-    return walrus
+def _set_names(names: set[Token], node: ast.AST) -> None:
+    for _node in ast.walk(node):
+        names.update(find_names(_node))
 
 
 def auto_walrus(content: str, path: str, line_length: int) -> str | None:
@@ -191,34 +289,36 @@ def auto_walrus(content: str, path: str, line_length: int) -> str | None:
     except SyntaxError:  # pragma: no cover
         return None
 
-    walruses = []
-    walruses.extend(visit_function_def(tree, path))
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef):
-            walruses.extend(visit_function_def(node, path))
-    lines_to_remove = []
-    walruses = sorted(walruses, key=lambda x: (-x[1][1], -x[1][2]))
+    walruses = _get_sorted_walruses(path, tree)
 
     if not walruses:
         return None
 
+    lines_to_remove: list[str] = []
+    _add_walruses(line_length, lines, lines_to_remove, walruses)
+
+    new_content = _get_new_content(lines, lines_to_remove)
+    new_content = _add_new_line(content, new_content)
+    return new_content if new_content != content else None
+
+
+def _add_walruses(
+    line_length: int,
+    lines: list[str],
+    lines_to_remove: list[str],
+    walruses: list[tuple[Token, Token]],
+) -> None:
     for _assignment, _if_statement in walruses:
         if _assignment[1] != _assignment[3]:
             continue
-        txt = lines[_assignment[1]-1][_assignment[2]:_assignment[4]]
+        txt = lines[_assignment[1] - 1][_assignment[2]:_assignment[4]]
         if txt.count('=') > 1:
             continue
-        line = lines[_if_statement[1]-1]
-        left_bit = line[:_if_statement[2]]
-        right_bit = line[_if_statement[4]:]
-        no_paren = any(left_bit.endswith(i) for i in SEP_SYMBOLS) and any(
-            right_bit.startswith(i) for i in SEP_SYMBOLS
+        left_bit, right_bit = _get_left_and_right_bits(_if_statement, lines)
+        no_paren = _is_no_paren(left_bit, right_bit)
+        line_with_walrus = _get_line_with_walrus(
+            left_bit, no_paren, right_bit, txt,
         )
-        replace = txt.replace('=', ':=')
-        if no_paren:
-            line_with_walrus = left_bit + replace + right_bit
-        else:
-            line_with_walrus = left_bit + '(' + replace + ')' + right_bit
         if len(line_with_walrus) > line_length:
             # don't rewrite if it would split over multiple lines
             continue
@@ -234,23 +334,91 @@ def auto_walrus(content: str, path: str, line_length: int) -> str | None:
         ):
             continue
         lines[_assignment[1] - 1] = line_without_assignment
-        # add walrus
-        lines[_if_statement[1]-1] = line_with_walrus
-        # remove empty line
-        if not lines[_assignment[1]-1].strip():
-            lines_to_remove.append(_assignment[1]-1)
 
+        _add_walrus(_if_statement, line_with_walrus, lines)
+        _remove_empty_line(_assignment, lines, lines_to_remove)
+
+
+def _is_no_paren(left_bit: str, right_bit: str) -> bool:
+    return any(left_bit.endswith(i) for i in SEP_SYMBOLS) \
+        and any(right_bit.startswith(i) for i in SEP_SYMBOLS)
+
+
+def _get_left_and_right_bits(
+    _if_statement: Token, lines: list[str],
+) -> tuple[str, str]:
+    line = lines[_if_statement[1] - 1]
+    left_bit = line[:_if_statement[2]]
+    right_bit = line[_if_statement[4]:]
+    return left_bit, right_bit
+
+
+def _get_line_with_walrus(
+    left_bit: str,
+    no_paren: bool,
+    right_bit: str,
+    txt: str,
+) -> str:
+    replace = txt.replace('=', ':=')
+    line_with_walrus = f'{left_bit}({replace}){right_bit}'
+    if no_paren:
+        line_with_walrus = left_bit + replace + right_bit
+
+    return line_with_walrus
+
+
+def _add_new_line(content: str, new_content: str) -> str:
+    if new_content and content.endswith('\n'):
+        new_content += '\n'
+    return new_content
+
+
+def _get_new_content(lines: list[str], lines_to_remove: list[str]) -> str:
     newlines = [
         line for i, line in enumerate(
             lines,
         ) if i not in lines_to_remove
     ]
-    newcontent = '\n'.join(newlines)
-    if newcontent and content.endswith('\n'):
-        newcontent += '\n'
-    if newcontent != content:
-        return newcontent
-    return None
+    return '\n'.join(newlines)
+
+
+def _remove_empty_line(
+    _assignment: Token,
+    lines: list[str],
+    lines_to_remove: list[str],
+) -> None:
+    # remove empty line
+    if not lines[_assignment[1] - 1].strip():
+        lines_to_remove.append(_assignment[1] - 1)  # type: ignore
+
+
+def _add_walrus(
+    _if_statement: Token,
+    line_with_walrus: str,
+    lines: list[str],
+) -> None:
+    # add walrus
+    lines[_if_statement[1] - 1] = line_with_walrus
+
+
+def _replace_assignment(_assignment: Token, lines: list[str]) -> None:
+    # replace assignment
+    line_without_assignment = (
+        f'{lines[_assignment[1] - 1][:_assignment[2]]}'
+        f'{lines[_assignment[1] - 1][_assignment[4]:]}'
+    )
+    lines[_assignment[1] - 1] = line_without_assignment
+
+
+def _get_sorted_walruses(
+    path: str, tree: ast.AST,
+) -> list[tuple[Token, Token]]:
+    walruses = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+            walruses.extend(visit_function_def(node, path))
+    walruses = sorted(walruses, key=lambda x: (-x[1][1], -x[1][2]))
+    return walruses
 
 
 def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
