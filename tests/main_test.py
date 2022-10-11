@@ -144,6 +144,11 @@ def test_rewrite(src: str, expected: str) -> None:
         'n = 10\n'
         'if foo(a := n+1):\n'
         '    print(n)\n',
+        'a = 0\n'
+        'if False and a:\n'
+        '    print(a)\n'
+        'else:\n'
+        '    print(a)\n',
     ],
 )
 def test_noop(src: str) -> None:

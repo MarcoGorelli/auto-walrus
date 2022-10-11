@@ -11,6 +11,7 @@ SEP_SYMBOLS = frozenset(('(', ')', ',', ':'))
 Token = Tuple[str, int, int, int, int]
 
 COMMENT = '# no-walrus'
+SIMPLE_NODE = (ast.Name, ast.Constant)
 
 
 def name_lineno_coloffset_list(
@@ -51,8 +52,6 @@ def find_names(
     node: ast.AST,
     end_lineno: int | None = None,
     end_col_offset: int | None = None,
-    *,
-    forbid_existing_walruses: bool = False,
 ) -> set[Token]:
     names = set()
     for _node in ast.walk(node):
@@ -62,10 +61,27 @@ def find_names(
                     _node, end_lineno, end_col_offset,
                 ),
             )
-        elif forbid_existing_walruses and isinstance(_node, ast.NamedExpr):
-            # Let's not introduce nested walruses...
-            return set()
     return names
+
+
+def is_simple_test(node: ast.AST) -> bool:
+    # TODO: this is definitely covered, if
+    # I run tests and put a breakpoint here then it
+    # gets here, and returns both True and False.
+    # So why is it reported as uncovered?
+    return (  # pragma: no cover
+        isinstance(node, SIMPLE_NODE)
+        or (
+            isinstance(node, ast.Compare)
+            and isinstance(node.left, SIMPLE_NODE)
+            and (
+                all(
+                    isinstance(_node, SIMPLE_NODE)
+                    for _node in node.comparators
+                )
+            )
+        )
+    )
 
 
 def visit_function_def(
@@ -94,18 +110,20 @@ def visit_function_def(
                     ),
                 )
                 related_vars[target.id] = list(find_names(_node.value))
-        elif isinstance(_node, ast.If):
-            ifs.update(find_names(_node.test, forbid_existing_walruses=True))
+        elif isinstance(_node, ast.If) and is_simple_test(_node.test):
+            ifs.update(find_names(_node.test))
             for __node in _node.orelse:
-                if isinstance(__node, ast.If):
+                if isinstance(__node, ast.If) and is_simple_test(__node.test):
                     ifs.update(
                         find_names(
                             __node.test,
-                            forbid_existing_walruses=True,
                         ),
                     )
-        elif isinstance(_node, (ast.If, ast.While)):
-            ifs.update(find_names(_node.test, forbid_existing_walruses=True))
+        elif (
+            isinstance(_node, (ast.If, ast.While))
+            and is_simple_test(_node.test)
+        ):
+            ifs.update(find_names(_node.test))
 
     sorted_names = sorted(names, key=lambda x: (x[1], x[2]))
     sorted_assignments = sorted(assignments, key=lambda x: (x[1], x[2]))
