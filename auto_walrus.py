@@ -277,9 +277,11 @@ def _set_ast_expression_types(
             ifs.update(find_names(_node.test))
 
 
+
 def _set_names(names: set[Token], node: ast.AST) -> None:
     for _node in ast.walk(node):
-        names.update(find_names(_node))
+        if isinstance(_node, ast.Name):
+            names.add(record_name_lineno_col_offset(_node))
 
 
 def auto_walrus(content: str, path: str, line_length: int) -> str | None:
@@ -322,17 +324,19 @@ def _add_walruses(
         if len(line_with_walrus) > line_length:
             # don't rewrite if it would split over multiple lines
             continue
+
         # replace assignment
         line_without_assignment = (
-            f'{lines[_assignment[1]-1][:_assignment[2]]}'
-            f'{lines[_assignment[1]-1][_assignment[4]:]}'
+            f'{lines[_assignment[1] - 1][:_assignment[2]]}'
+            f'{lines[_assignment[1] - 1][_assignment[4]:]}'
         )
         if (
-            COMMENT in lines[_assignment[1]-1]
+                COMMENT in lines[_assignment[1] - 1]
         ) or (
-            COMMENT in lines[_if_statement[1]-1]
+                COMMENT in lines[_if_statement[1] - 1]
         ):
             continue
+
         lines[_assignment[1] - 1] = line_without_assignment
 
         _add_walrus(_if_statement, line_with_walrus, lines)
@@ -401,19 +405,11 @@ def _add_walrus(
     lines[_if_statement[1] - 1] = line_with_walrus
 
 
-def _replace_assignment(_assignment: Token, lines: list[str]) -> None:
-    # replace assignment
-    line_without_assignment = (
-        f'{lines[_assignment[1] - 1][:_assignment[2]]}'
-        f'{lines[_assignment[1] - 1][_assignment[4]:]}'
-    )
-    lines[_assignment[1] - 1] = line_without_assignment
-
-
 def _get_sorted_walruses(
-    path: str, tree: ast.AST,
+        path: str, tree: ast.FunctionDef | ast.Module,
 ) -> list[tuple[Token, Token]]:
     walruses = []
+    walruses.extend(visit_function_def(tree, path))
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
             walruses.extend(visit_function_def(node, path))
