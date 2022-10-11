@@ -51,6 +51,8 @@ def find_names(
     node: ast.AST,
     end_lineno: int | None = None,
     end_col_offset: int | None = None,
+    *,
+    forbid_existing_walruses: bool = False,
 ) -> set[Token]:
     names = set()
     for _node in ast.walk(node):
@@ -60,6 +62,9 @@ def find_names(
                     _node, end_lineno, end_col_offset,
                 ),
             )
+        elif forbid_existing_walruses and isinstance(_node, ast.NamedExpr):
+            # Let's not introduce nested walruses...
+            return set()
     return names
 
 
@@ -71,7 +76,8 @@ def visit_function_def(
     assignments = set()
     ifs = set()
     for _node in ast.walk(node):
-        names.update(find_names(_node))
+        if isinstance(_node, ast.Name):
+            names.add(record_name_lineno_coloffset(_node))
 
     related_vars = {}
 
@@ -89,12 +95,17 @@ def visit_function_def(
                 )
                 related_vars[target.id] = list(find_names(_node.value))
         elif isinstance(_node, ast.If):
-            ifs.update(find_names(_node.test))
+            ifs.update(find_names(_node.test, forbid_existing_walruses=True))
             for __node in _node.orelse:
                 if isinstance(__node, ast.If):
-                    ifs.update(find_names(__node.test))
+                    ifs.update(
+                        find_names(
+                            __node.test,
+                            forbid_existing_walruses=True,
+                        ),
+                    )
         elif isinstance(_node, (ast.If, ast.While)):
-            ifs.update(find_names(_node.test))
+            ifs.update(find_names(_node.test, forbid_existing_walruses=True))
 
     sorted_names = sorted(names, key=lambda x: (x[1], x[2]))
     sorted_assignments = sorted(assignments, key=lambda x: (x[1], x[2]))
