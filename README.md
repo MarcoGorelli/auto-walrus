@@ -30,7 +30,7 @@ Sample `.pre-commit-config.yaml`:
 
 ```yaml
 -   repo: https://github.com/MarcoGorelli/auto-walrus
-    rev: v0.1.7
+    rev: v0.1.8
     hooks:
     -   id: auto-walrus
 ```
