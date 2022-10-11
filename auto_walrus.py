@@ -10,6 +10,8 @@ SEP_SYMBOLS = frozenset(('(', ')', ',', ':'))
 # name, lineno, col_offset, end_lineno, end_col_offset
 Token = Tuple[str, int, int, int, int]
 
+COMMENT = '# no-walrus'
+
 
 def name_lineno_coloffset_list(
     tokens: list[Token],
@@ -62,7 +64,7 @@ def find_names(
 
 
 def visit_function_def(
-    node: ast.FunctionDef,
+    node: ast.FunctionDef | ast.Module,
     path: str,
 ) -> list[tuple[Token, Token]]:
     names = set()
@@ -161,6 +163,7 @@ def auto_walrus(content: str, path: str, line_length: int) -> str | None:
         return None
 
     walruses = []
+    walruses.extend(visit_function_def(tree, path))
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
             walruses.extend(visit_function_def(node, path))
@@ -195,6 +198,12 @@ def auto_walrus(content: str, path: str, line_length: int) -> str | None:
             f'{lines[_assignment[1]-1][:_assignment[2]]}'
             f'{lines[_assignment[1]-1][_assignment[4]:]}'
         )
+        if (
+            COMMENT in lines[_assignment[1]-1]
+        ) or (
+            COMMENT in lines[_if_statement[1]-1]
+        ):
+            continue
         lines[_assignment[1] - 1] = line_without_assignment
         # add walrus
         lines[_if_statement[1]-1] = line_with_walrus

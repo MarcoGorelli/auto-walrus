@@ -16,6 +16,13 @@ from auto_walrus import auto_walrus
             '        print(a)\n',
         ),
         (
+            'a = 0\n'
+            'if a:\n'
+            '    print(a)\n',
+            'if (a := 0):\n'
+            '    print(a)\n',
+        ),
+        (
             'def foo():\n'
             '    a = 0\n'
             '    if a:\n'
@@ -115,6 +122,12 @@ def test_rewrite(src: str, expected: str) -> None:
         '    a = thequickbrownfoxjumpsoverthelazydog\n'
         '    if a:\n'
         '        print(a)\n',
+        'a = 0  # no-walrus\n'
+        'if a:\n'
+        '    print(a)\n',
+        'a = 0\n'
+        'if a:  # no-walrus\n'
+        '    print(a)\n',
     ],
 )
 def test_noop(src: str) -> None:

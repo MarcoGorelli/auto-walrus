@@ -56,3 +56,11 @@ E.g.
 ```
 auto-walrus myfile_1.py myfile_2.py --line-length 89
 ```
+
+You can turn off rewrites by adding a `# no-walrus` comment, either when you
+assign a variable, or when you use it in an `if` or `where` statement, e.g.:
+```python
+n = 10  # no-walrus
+if n > 3:
+    print(n)
+```
