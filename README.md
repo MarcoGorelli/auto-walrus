@@ -64,3 +64,21 @@ n = 10  # no-walrus
 if n > 3:
     print(n)
 ```
+
+## Testimonials
+
+**Christopher Redwine**, [Senior Software Engineer at TechnologyAdvice](https://github.com/chrisRedwine)
+
+> hmm, i dunno about this one chief
+
+**Michael Kennedy & Brian Okken**, [hosts of the Python Bytes podcast](https://pythonbytes.fm/):
+
+> I kind of like this being separate from other tools
+
+**Someone on Discord**
+
+> you're a monster
+
+**Will McGugan**, [CEO / Founder of http://Textualize.io](https://www.willmcgugan.com/):
+
+> Embrace the Walrus!
