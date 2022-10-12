@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import ast
 import sys
+from typing import Iterable
 from typing import Sequence
 from typing import Tuple
 
@@ -14,8 +15,8 @@ COMMENT = '# no-walrus'
 SIMPLE_NODE = (ast.Name, ast.Constant)
 
 
-def name_lineno_coloffset_list(
-    tokens: list[Token],
+def name_lineno_coloffset_iterable(
+    tokens: Iterable[Token],
 ) -> list[tuple[str, int, int]]:
     return [(i[0], i[1], i[2]) for i in tokens]
 
@@ -84,41 +85,131 @@ def is_simple_test(node: ast.AST) -> bool:
     )
 
 
+def process_if(
+    node: ast.If,
+    in_body_vars: dict[Token, set[Token]],
+) -> set[Token]:
+    _names = find_names(node.test)
+    _body_names = {_name for _body in node.body for _name in find_names(_body)}
+    for _name in _names:
+        in_body_vars[_name] = _body_names
+    return _names
+
+
+def process_assign(
+    node: ast.Assign,
+    assignments: set[Token],
+    related_vars: dict[str, list[Token]],
+) -> None:
+    if (
+        len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+    ):
+        target = node.targets[0]
+        assignments.add(
+            record_name_lineno_coloffset(
+                target, node.end_lineno, node.end_col_offset,
+            ),
+        )
+        related_vars[target.id] = list(find_names(node.value))
+
+
+def is_walrussable(
+    _assignment: Token,
+    _if_statement: Token,
+    sorted_names: list[Token],
+    assignment_idx: int,
+    if_statement_idx: int,
+    _other_assignments: list[Token],
+    _other_usages: list[Token],
+    names: set[Token],
+    in_body_vars: dict[Token, set[Token]],
+) -> bool:
+    return (
+        # check name doesn't appear between assignment and if statement
+        _assignment[0] not in [
+            sorted_names[i][0]
+            for i in range(assignment_idx+1, if_statement_idx)
+        ]
+        # check it's the variable's only assignment
+        and (len(_other_assignments) == 1)
+        # check this is the first usage of this name
+        and (
+            name_lineno_coloffset(
+                _other_usages[0],
+            ) == name_lineno_coloffset(_assignment)
+        )
+        # check it's used at least somewhere else
+        and (len(_other_usages) > 2)
+        # check it doesn't appear anywhere else
+        and not [
+            i for i in names
+            if (
+                name_lineno_coloffset(i) not in
+                name_lineno_coloffset_iterable(in_body_vars[_if_statement])
+            )
+            and (
+                name_lineno_coloffset(
+                    i,
+                ) != name_lineno_coloffset(_assignment)
+            )
+            and (
+                name_lineno_coloffset(
+                    i,
+                ) != name_lineno_coloffset(_if_statement)
+            )
+            and i[0] == _assignment[0]
+        ]
+    )
+
+
+def related_vars_are_unused(
+    related_vars: dict[str, list[Token]],
+    name: str,
+    sorted_names: list[Token],
+    assignment_idx: int,
+    if_statement_idx: int,
+) -> bool:
+    # Check that names which appear in right hand side of
+    # assignment aren't used between assignment and if-statement.
+    related = related_vars[name]
+    should_break = False
+    for rel in related:
+        usages = [
+            i for i in sorted_names if i[0]
+            == rel[0] if i != rel
+        ]
+        for usage in usages:
+            rel_used_idx = name_lineno_coloffset_iterable(
+                sorted_names,
+            ).index(name_lineno_coloffset(usage))
+            if assignment_idx < rel_used_idx < if_statement_idx:
+                should_break = True
+    return not should_break
+
+
 def visit_function_def(
     node: ast.FunctionDef | ast.Module,
     path: str,
 ) -> list[tuple[Token, Token]]:
     names = set()
-    assignments = set()
+    assignments: set[Token] = set()
     ifs = set()
     for _node in ast.walk(node):
         if isinstance(_node, ast.Name):
             names.add(record_name_lineno_coloffset(_node))
 
-    related_vars = {}
+    related_vars: dict[str, list[Token]] = {}
+    in_body_vars: dict[Token, set[Token]] = {}
 
     for _node in node.body:
         if isinstance(_node, ast.Assign):
-            if (
-                len(_node.targets) == 1
-                and isinstance(_node.targets[0], ast.Name)
-            ):
-                target = _node.targets[0]
-                assignments.add(
-                    record_name_lineno_coloffset(
-                        target, _node.end_lineno, _node.end_col_offset,
-                    ),
-                )
-                related_vars[target.id] = list(find_names(_node.value))
+            process_assign(_node, assignments, related_vars)
         elif isinstance(_node, ast.If) and is_simple_test(_node.test):
-            ifs.update(find_names(_node.test))
+            ifs.update(process_if(_node, in_body_vars))
             for __node in _node.orelse:
                 if isinstance(__node, ast.If) and is_simple_test(__node.test):
-                    ifs.update(
-                        find_names(
-                            __node.test,
-                        ),
-                    )
+                    ifs.update(process_if(__node, in_body_vars))
 
     sorted_names = sorted(names, key=lambda x: (x[1], x[2]))
     sorted_assignments = sorted(assignments, key=lambda x: (x[1], x[2]))
@@ -130,52 +221,38 @@ def visit_function_def(
         if len(_if_statements) != 1:
             continue
         _if_statement = _if_statements[0]
-        assignment_idx = name_lineno_coloffset_list(
+        assignment_idx = name_lineno_coloffset_iterable(
             sorted_names,
         ).index(name_lineno_coloffset(_assignment))
-        if_statement_idx = name_lineno_coloffset_list(
+        if_statement_idx = name_lineno_coloffset_iterable(
             sorted_names,
         ).index(name_lineno_coloffset(_if_statement))
         _other_assignments = [
-            name_lineno_coloffset(i)
+            i
             for i in sorted_assignments if i[0] == _assignment[0]
         ]
         _other_usages = [
-            name_lineno_coloffset(
-                i,
-            ) for i in sorted_names if i[0] == _assignment[0]
+            i for i in sorted_names if i[0] == _assignment[0]
         ]
-        if (
-            # check name doesn't appear between assignment and if statement
-            _assignment[0] not in [
-                sorted_names[i][0]
-                for i in range(assignment_idx+1, if_statement_idx)
-            ]
-            # check it's the variable's only assignment
-            and (len(_other_assignments) == 1)
-            # check this is the first usage of this name
-            and (_other_usages[0] == name_lineno_coloffset(_assignment))
-            # check it's used at least somewhere else
-            and len(_other_usages) > 2
+        if is_walrussable(
+            _assignment,
+            _if_statement,
+            sorted_names,
+            assignment_idx,
+            if_statement_idx,
+            _other_assignments,
+            _other_usages,
+            names,
+            in_body_vars,
         ):
-            # Check that names which appear in right hand side of
-            # assignment aren't used between assignment and if-statement.
-            related = related_vars[_assignment[0]]
-            should_break = False
-            for rel in related:
-                usages = [
-                    i for i in sorted_names if i[0]
-                    == rel[0] if i != rel
-                ]
-                for usage in usages:
-                    rel_used_idx = name_lineno_coloffset_list(
-                        sorted_names,
-                    ).index(name_lineno_coloffset(usage))
-                    if assignment_idx < rel_used_idx < if_statement_idx:
-                        should_break = True
-            if should_break:
-                continue
-            walrus.append((_assignment, _if_statement))
+            if related_vars_are_unused(
+                related_vars,
+                _assignment[0],
+                sorted_names,
+                assignment_idx,
+                if_statement_idx,
+            ):
+                walrus.append((_assignment, _if_statement))
     return walrus
 
 
