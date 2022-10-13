@@ -11,7 +11,7 @@ from typing import Tuple
 SEP_SYMBOLS = frozenset(('(', ')', ',', ':'))
 # name, lineno, col_offset, end_lineno, end_col_offset
 Token = Tuple[str, int, int, int, int]
-
+SIMPLE_NODE = (ast.Name, ast.Constant)
 ENDS_WITH_COMMENT = re.compile(r'#.*$')
 
 
@@ -23,6 +23,22 @@ def name_lineno_coloffset_iterable(
 
 def name_lineno_coloffset(tokens: Token) -> tuple[str, int, int]:
     return (tokens[0], tokens[1], tokens[2])
+
+
+def is_simple_test(node: ast.AST) -> bool:
+    return (
+        isinstance(node, SIMPLE_NODE)
+        or (
+            isinstance(node, ast.Compare)
+            and isinstance(node.left, SIMPLE_NODE)
+            and (
+                all(
+                    isinstance(_node, SIMPLE_NODE)
+                    for _node in node.comparators
+                )
+            )
+        )
+    )
 
 
 def record_name_lineno_coloffset(
@@ -186,9 +202,10 @@ def visit_function_def(
         if isinstance(_node, ast.Assign):
             process_assign(_node, assignments, related_vars)
         elif isinstance(_node, ast.If):
-            ifs.update(process_if(_node, in_body_vars))
+            if is_simple_test(_node.test):
+                ifs.update(process_if(_node, in_body_vars))
             for __node in _node.orelse:
-                if isinstance(__node, ast.If):
+                if isinstance(__node, ast.If) and is_simple_test(__node.test):
                     ifs.update(process_if(__node, in_body_vars))
 
     sorted_names = sorted(names, key=lambda x: (x[1], x[2]))

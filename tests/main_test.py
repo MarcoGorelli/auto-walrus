@@ -179,14 +179,20 @@ def test_rewrite(src: str, expected: str) -> None:
         '    if a:\n'
         '        print(a)\n'
         '    a = 2\n',
-        'n = 10\n'
-        'if True:\n'
-        '    pass\n'
-        'elif foo(a := n+1):\n'
-        '    print(n)\n',
-        'n = 10\n'
-        'if n > np.sin(foo.bar.quox):\n'
-        '    print(n)\n',
+        'def foo():\n'
+        '    n = 10\n'
+        '    if True:\n'
+        '        pass\n'
+        '    elif foo(a := n+1):\n'
+        '        print(n)\n',
+        'def foo():\n'
+        '    n = 10\n'
+        '    if n > np.sin(foo.bar.quox):\n'
+        '        print(n)\n',
+        'def foo():\n'
+        '    n = 10\n'
+        '    if True or n > 3:\n'
+        '        print(n)\n',
     ],
 )
 def test_noop(src: str) -> None:
