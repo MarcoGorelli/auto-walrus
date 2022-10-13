@@ -76,3 +76,7 @@ Lines with comments (e.g. `# type: ignore`) won't be rewritten.
 **Will McGugan**, [CEO / Founder of http://Textualize.io](https://www.willmcgugan.com/):
 
 > Embrace the Walrus!
+
+## Credits
+
+Logo by [lion_space](https://www.fiverr.com/lion_space)
