@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import re
 import sys
 from typing import Iterable
 from typing import Sequence
@@ -11,8 +12,7 @@ SEP_SYMBOLS = frozenset(('(', ')', ',', ':'))
 # name, lineno, col_offset, end_lineno, end_col_offset
 Token = Tuple[str, int, int, int, int]
 
-COMMENT = '# no-walrus'
-SIMPLE_NODE = (ast.Name, ast.Constant)
+ENDS_WITH_COMMENT = re.compile(r'#.*$')
 
 
 def name_lineno_coloffset_iterable(
@@ -63,26 +63,6 @@ def find_names(
                 ),
             )
     return names
-
-
-def is_simple_test(node: ast.AST) -> bool:
-    # TODO: this is definitely covered, if
-    # I run tests and put a breakpoint here then it
-    # gets here, and returns both True and False.
-    # So why is it reported as uncovered?
-    return (  # pragma: no cover
-        isinstance(node, SIMPLE_NODE)
-        or (
-            isinstance(node, ast.Compare)
-            and isinstance(node.left, SIMPLE_NODE)
-            and (
-                all(
-                    isinstance(_node, SIMPLE_NODE)
-                    for _node in node.comparators
-                )
-            )
-        )
-    )
 
 
 def process_if(
@@ -189,7 +169,7 @@ def related_vars_are_unused(
 
 
 def visit_function_def(
-    node: ast.FunctionDef | ast.Module,
+    node: ast.FunctionDef,
     path: str,
 ) -> list[tuple[Token, Token]]:
     names = set()
@@ -205,10 +185,10 @@ def visit_function_def(
     for _node in node.body:
         if isinstance(_node, ast.Assign):
             process_assign(_node, assignments, related_vars)
-        elif isinstance(_node, ast.If) and is_simple_test(_node.test):
+        elif isinstance(_node, ast.If):
             ifs.update(process_if(_node, in_body_vars))
             for __node in _node.orelse:
-                if isinstance(__node, ast.If) and is_simple_test(__node.test):
+                if isinstance(__node, ast.If):
                     ifs.update(process_if(__node, in_body_vars))
 
     sorted_names = sorted(names, key=lambda x: (x[1], x[2]))
@@ -264,7 +244,6 @@ def auto_walrus(content: str, path: str, line_length: int) -> str | None:
         return None
 
     walruses = []
-    walruses.extend(visit_function_def(tree, path))
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
             walruses.extend(visit_function_def(node, path))
@@ -300,9 +279,9 @@ def auto_walrus(content: str, path: str, line_length: int) -> str | None:
             f'{lines[_assignment[1]-1][_assignment[4]:]}'
         )
         if (
-            COMMENT in lines[_assignment[1]-1]
+            ENDS_WITH_COMMENT.search(lines[_assignment[1]-1]) is not None
         ) or (
-            COMMENT in lines[_if_statement[1]-1]
+            ENDS_WITH_COMMENT.search(lines[_if_statement[1]-1]) is not None
         ):
             continue
         lines[_assignment[1] - 1] = line_without_assignment

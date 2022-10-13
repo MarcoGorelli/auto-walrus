@@ -16,11 +16,22 @@ from auto_walrus import auto_walrus
             '        print(a)\n',
         ),
         (
-            'a = 0\n'
-            'if a:\n'
-            '    print(a)\n',
-            'if (a := 0):\n'
-            '    print(a)\n',
+            'def foo():\n'
+            '    a = 0\n'
+            '    if a:\n'
+            '        print(a)\n',
+            'def foo():\n'
+            '    if (a := 0):\n'
+            '        print(a)\n',
+        ),
+        (
+            'def foo():\n'
+            '    a = 0\n'
+            '    if a > 3:\n'
+            '        print(a)\n',
+            'def foo():\n'
+            '    if (a := 0) > 3:\n'
+            '        print(a)\n',
         ),
         (
             'def foo():\n'
@@ -100,6 +111,19 @@ from auto_walrus import auto_walrus
             '    if (b := 3) > 0:\n'
             '        print(b)\n',
         ),
+        (
+            'def foo():\n'
+            '    a = 0\n'
+            '    if np.sin(b) + np.cos(b) < np.tan(b):\n'
+            '        pass\n'
+            '    elif a:\n'
+            '        print(a)\n',
+            'def foo():\n'
+            '    if np.sin(b) + np.cos(b) < np.tan(b):\n'
+            '        pass\n'
+            '    elif (a := 0):\n'
+            '        print(a)\n',
+        ),
     ],
 )
 def test_rewrite(src: str, expected: str) -> None:
@@ -110,7 +134,6 @@ def test_rewrite(src: str, expected: str) -> None:
 @pytest.mark.parametrize(
     'src',
     [
-        # middle variable
         'def foo():\n'
         '    b = [0]\n'
         '    a = b[0]\n'
@@ -135,12 +158,14 @@ def test_rewrite(src: str, expected: str) -> None:
         '    a = thequickbrownfoxjumpsoverthelazydog\n'
         '    if a:\n'
         '        print(a)\n',
-        'a = 0  # no-walrus\n'
-        'if a:\n'
-        '    print(a)\n',
-        'a = 0\n'
-        'if a:  # no-walrus\n'
-        '    print(a)\n',
+        'def foo():\n'
+        '    a = 0  # no-walrus\n'
+        '    if a:\n'
+        '        print(a)\n',
+        'def foo():\n'
+        '    a = 0\n'
+        '    if a:  # no-walrus\n'
+        '        print(a)\n',
         'n = 10\n'
         'if foo(a := n+1):\n'
         '    print(n)\n',
@@ -154,6 +179,14 @@ def test_rewrite(src: str, expected: str) -> None:
         '    if a:\n'
         '        print(a)\n'
         '    a = 2\n',
+        'n = 10\n'
+        'if True:\n'
+        '    pass\n'
+        'elif foo(a := n+1):\n'
+        '    print(n)\n',
+        'n = 10\n'
+        'if n > np.sin(foo.bar.quox):\n'
+        '    print(n)\n',
     ],
 )
 def test_noop(src: str) -> None:
