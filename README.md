@@ -3,7 +3,7 @@ auto-walrus
 </h1>
 
 <p align="center">
-<img width="458" alt="auto-walrus" src="https://user-images.githubusercontent.com/33491632/194703119-156e8b6e-6461-4e2e-b946-442f3389c32b.png">
+<img width="458" alt="auto-walrus" src="https://user-images.githubusercontent.com/33491632/195613331-f7442140-09da-4376-90aa-2ac4aaa242fa.png">
 </p>
 
 auto-walrus
