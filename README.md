@@ -45,6 +45,7 @@ auto-walrus myfile.py
 -    n = 10
 -    if n > 3:
 +    if (n := 10) > 3:
+         print(n)
 ```
 
 ## Configuration
