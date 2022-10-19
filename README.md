@@ -60,6 +60,14 @@ auto-walrus myfile_1.py myfile_2.py --line-length 89
 
 Lines with comments (e.g. `# type: ignore`) won't be rewritten.
 
+## Used by
+
+To my great surprise, this is being used by:
+
+- https://github.com/python-graphblas/python-graphblas
+
+Anyone else? Please let me know, or you can open a pull request to add yourself.
+
 ## Testimonials
 
 **Christopher Redwine**, [Senior Software Engineer at TechnologyAdvice](https://github.com/chrisRedwine)
