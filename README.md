@@ -65,6 +65,7 @@ Lines with comments (e.g. `# type: ignore`) won't be rewritten.
 To my great surprise, this is being used by:
 
 - https://github.com/python-graphblas/python-graphblas
+- https://github.com/Remi-Gau/bids2cite
 
 Anyone else? Please let me know, or you can open a pull request to add yourself.
 
