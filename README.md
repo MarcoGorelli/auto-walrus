@@ -58,7 +58,7 @@ E.g.
 auto-walrus myfile_1.py myfile_2.py --line-length 89
 ```
 
-Lines with comments (e.g. `# type: ignore`) won't be rewritten.
+Lines with comments won't be rewritten.
 
 ## Used by
 
