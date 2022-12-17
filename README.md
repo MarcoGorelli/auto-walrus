@@ -3,7 +3,7 @@ auto-walrus
 </h1>
 
 <p align="center">
-<img width="458" alt="auto-walrus" src="https://user-images.githubusercontent.com/33491632/194703119-156e8b6e-6461-4e2e-b946-442f3389c32b.png">
+<img width="458" alt="auto-walrus" src="https://user-images.githubusercontent.com/33491632/195613331-f7442140-09da-4376-90aa-2ac4aaa242fa.png">
 </p>
 
 auto-walrus
@@ -45,6 +45,7 @@ auto-walrus myfile.py
 -    n = 10
 -    if n > 3:
 +    if (n := 10) > 3:
+         print(n)
 ```
 
 ## Configuration
@@ -57,7 +58,17 @@ E.g.
 auto-walrus myfile_1.py myfile_2.py --line-length 89
 ```
 
-Lines with comments (e.g. `# type: ignore`) won't be rewritten.
+Lines with comments won't be rewritten.
+
+## Used by
+
+To my great surprise, this is being used by:
+
+- https://github.com/python-graphblas/python-graphblas
+- https://github.com/Remi-Gau/bids2cite
+- https://github.com/TheAlgorithms/Python
+
+Anyone else? Please let me know, or you can open a pull request to add yourself.
 
 ## Testimonials
 
@@ -76,3 +87,7 @@ Lines with comments (e.g. `# type: ignore`) won't be rewritten.
 **Will McGugan**, [CEO / Founder of http://Textualize.io](https://www.willmcgugan.com/):
 
 > Embrace the Walrus!
+
+## Credits
+
+Logo by [lion_space](https://www.fiverr.com/lion_space)
