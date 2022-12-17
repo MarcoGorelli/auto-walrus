@@ -329,8 +329,11 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
     args = parser.parse_args(argv)
     ret = 0
     for path in args.paths:
-        with open(path, encoding='utf-8') as fd:
-            content = fd.read()
+        try:
+            with open(path, encoding='utf-8') as fd:
+                content = fd.read()
+        except UnicodeDecodeError:
+            continue
         new_content = auto_walrus(content, path, line_length=args.line_length)
         if new_content is not None and content != new_content:
             sys.stdout.write(f'Rewriting {path}\n')
