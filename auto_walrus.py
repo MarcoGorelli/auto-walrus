@@ -4,7 +4,9 @@ import argparse
 import ast
 import re
 import sys
-from typing import Iterable, Sequence, Tuple
+from typing import Iterable
+from typing import Sequence
+from typing import Tuple
 
 SEP_SYMBOLS = frozenset(('(', ')', ',', ':'))
 # name, lineno, col_offset, end_lineno, end_col_offset
