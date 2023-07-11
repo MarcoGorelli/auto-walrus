@@ -4,9 +4,7 @@ import argparse
 import ast
 import re
 import sys
-from typing import Iterable
-from typing import Sequence
-from typing import Tuple
+from typing import Iterable, Sequence, Tuple
 
 SEP_SYMBOLS = frozenset(('(', ')', ',', ':'))
 # name, lineno, col_offset, end_lineno, end_col_offset
@@ -241,15 +239,14 @@ def visit_function_def(
             _other_usages,
             names,
             in_body_vars,
+        ) and related_vars_are_unused(
+            related_vars,
+            _assignment[0],
+            sorted_names,
+            assignment_idx,
+            if_statement_idx,
         ):
-            if related_vars_are_unused(
-                related_vars,
-                _assignment[0],
-                sorted_names,
-                assignment_idx,
-                if_statement_idx,
-            ):
-                walrus.append((_assignment, _if_statement))
+            walrus.append((_assignment, _if_statement))
     return walrus
 
 
