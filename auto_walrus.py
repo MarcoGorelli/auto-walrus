@@ -392,9 +392,9 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
         else:
             filepaths = (
                 p for p in path.rglob('*')
-                if re.search(args.files, str(p), re.VERBOSE)
-                and not re.search(args.exclude, str(p), re.VERBOSE)
-                and not re.search(EXCLUDES, str(p))
+                if re.search(args.files, p.as_posix(), re.VERBOSE)
+                and not re.search(args.exclude, p.as_posix(), re.VERBOSE)
+                and not re.search(EXCLUDES, p.as_posix())
                 and p.suffix == '.py'
             )
 
