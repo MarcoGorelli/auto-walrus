@@ -2,17 +2,32 @@ from __future__ import annotations
 
 import argparse
 import ast
+import os
+import pathlib
 import re
 import sys
+from typing import Any
 from typing import Iterable
 from typing import Sequence
 from typing import Tuple
+
+if sys.version_info >= (3, 11):  # pragma: no cover
+    import tomllib
+else:
+    import tomli as tomllib
 
 SEP_SYMBOLS = frozenset(('(', ')', ',', ':'))
 # name, lineno, col_offset, end_lineno, end_col_offset
 Token = Tuple[str, int, int, int, int]
 SIMPLE_NODE = (ast.Name, ast.Constant)
 ENDS_WITH_COMMENT = re.compile(r'#.*$')
+EXCLUDES = (
+    r'/('
+    r'\.direnv|\.eggs|\.git|\.hg|\.ipynb_checkpoints|\.mypy_cache|\.nox|\.svn|'
+    r'\.tox|\.venv|'
+    r'_build|buck-out|build|dist|venv'
+    r')/'
+)
 
 
 def name_lineno_coloffset_iterable(
@@ -186,7 +201,7 @@ def related_vars_are_unused(
 
 def visit_function_def(
     node: ast.FunctionDef,
-    path: str,
+    path: pathlib.Path,
 ) -> list[tuple[Token, Token]]:
     names = set()
     assignments: set[Token] = set()
@@ -253,7 +268,7 @@ def visit_function_def(
     return walrus
 
 
-def auto_walrus(content: str, path: str, line_length: int) -> str | None:
+def auto_walrus(content: str, path: pathlib.Path, line_length: int) -> str | None:
     lines = content.splitlines()
     try:
         tree = ast.parse(content)
@@ -321,25 +336,80 @@ def auto_walrus(content: str, path: str, line_length: int) -> str | None:
     return None
 
 
+def _get_config(paths: list[pathlib.Path]) -> dict[str, Any]:
+    """Get the configuration from a config file.
+
+    Search for a pyproject.toml in common parent directories
+    of the given list of paths.
+    """
+    root = pathlib.Path(os.path.commonpath(paths))
+    root = root.parent if root.is_file() else root
+
+    while root != root.parent:
+
+        config_file = root / 'pyproject.toml'
+        if config_file.is_file():
+            config = tomllib.loads(config_file.read_text())
+            config = config.get('tool', {}).get('auto-walrus', {})
+            if config:
+                return config
+
+        root = root.parent
+
+    return {}
+
+
 def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
     parser = argparse.ArgumentParser()
     parser.add_argument('paths', nargs='*')
+    parser.add_argument(
+        '--files',
+        help='Regex pattern with which to match files to include',
+        required=False,
+        default=r'',
+    )
+    parser.add_argument(
+        '--exclude',
+        help='Regex pattern with which to match files to exclude',
+        required=False,
+        default=r'^$',
+    )
     # black formatter's default
     parser.add_argument('--line-length', type=int, default=88)
     args = parser.parse_args(argv)
+    paths = [pathlib.Path(path).resolve() for path in args.paths]
+
+    # Update defaults from pyproject.toml if present
+    config = {k.replace('-', '_'): v for k, v in _get_config(paths).items()}
+    parser.set_defaults(**config)
+    args = parser.parse_args(argv)
+
     ret = 0
-    for path in args.paths:
-        try:
-            with open(path, encoding='utf-8') as fd:
-                content = fd.read()
-        except UnicodeDecodeError:
-            continue
-        new_content = auto_walrus(content, path, line_length=args.line_length)
-        if new_content is not None and content != new_content:
-            sys.stdout.write(f'Rewriting {path}\n')
-            with open(path, 'w', encoding='utf-8') as fd:
-                fd.write(new_content)
-            ret = 1
+
+    for path in paths:
+        if path.is_file():
+            filepaths = iter((path,))
+        else:
+            filepaths = (
+                p for p in path.rglob('*')
+                if re.search(args.files, str(p), re.VERBOSE)
+                and not re.search(args.exclude, str(p), re.VERBOSE)
+                and not re.search(EXCLUDES, str(p))
+                and p.suffix == '.py'
+            )
+
+        for filepath in filepaths:
+            try:
+                with open(filepath, encoding='utf-8') as fd:
+                    content = fd.read()
+            except UnicodeDecodeError:
+                continue
+            new_content = auto_walrus(content, filepath, line_length=args.line_length)
+            if new_content is not None and content != new_content:
+                sys.stdout.write(f'Rewriting {filepath}\n')
+                with open(filepath, 'w', encoding='utf-8') as fd:
+                    fd.write(new_content)
+                ret = 1
     return ret
 
 
