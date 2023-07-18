@@ -404,7 +404,9 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
                     content = fd.read()
             except UnicodeDecodeError:
                 continue
-            new_content = auto_walrus(content, filepath, line_length=args.line_length)
+            new_content = auto_walrus(
+                content, filepath, line_length=args.line_length,
+            )
             if new_content is not None and content != new_content:
                 sys.stdout.write(f'Rewriting {filepath}\n')
                 with open(filepath, 'w', encoding='utf-8') as fd:

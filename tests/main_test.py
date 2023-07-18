@@ -268,7 +268,7 @@ def test_config_file_respected(project_dir: ProjectDirT) -> None:
 
 @pytest.mark.config_content(PROJECT_CONFIG_EXCLUDE_A)
 def test_config_file_overridden_by_cmdline(
-    project_dir: ProjectDirT
+    project_dir: ProjectDirT,
 ) -> None:
     project_root, files = project_dir
     main(['--exclude', '/b', str(project_root)])
