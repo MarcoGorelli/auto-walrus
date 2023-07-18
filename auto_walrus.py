@@ -13,7 +13,7 @@ from typing import Tuple
 
 if sys.version_info >= (3, 11):  # pragma: no cover
     import tomllib
-else:
+else:  # pragma: no cover
     import tomli as tomllib
 
 SEP_SYMBOLS = frozenset(('(', ')', ',', ':'))
