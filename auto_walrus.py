@@ -268,7 +268,9 @@ def visit_function_def(
     return walrus
 
 
-def auto_walrus(content: str, path: pathlib.Path, line_length: int) -> str | None:
+def auto_walrus(
+    content: str, path: pathlib.Path, line_length: int,
+) -> str | None:
     lines = content.splitlines()
     try:
         tree = ast.parse(content)
