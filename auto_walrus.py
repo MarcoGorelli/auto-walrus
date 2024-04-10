@@ -16,17 +16,17 @@ if sys.version_info >= (3, 11):  # pragma: no cover
 else:  # pragma: no cover
     import tomli as tomllib
 
-SEP_SYMBOLS = frozenset(('(', ')', ',', ':'))
+SEP_SYMBOLS = frozenset(("(", ")", ",", ":"))
 # name, lineno, col_offset, end_lineno, end_col_offset
 Token = Tuple[str, int, int, int, int]
 SIMPLE_NODE = (ast.Name, ast.Constant)
-ENDS_WITH_COMMENT = re.compile(r'#.*$')
+ENDS_WITH_COMMENT = re.compile(r"#.*$")
 EXCLUDES = (
-    r'/('
-    r'\.direnv|\.eggs|\.git|\.hg|\.ipynb_checkpoints|\.mypy_cache|\.nox|\.svn|'
-    r'\.tox|\.venv|'
-    r'_build|buck-out|build|dist|venv'
-    r')/'
+    r"/("
+    r"\.direnv|\.eggs|\.git|\.hg|\.ipynb_checkpoints|\.mypy_cache|\.nox|\.svn|"
+    r"\.tox|\.venv|"
+    r"_build|buck-out|build|dist|venv"
+    r")/"
 )
 
 
@@ -41,18 +41,10 @@ def name_lineno_coloffset(tokens: Token) -> tuple[str, int, int]:
 
 
 def is_simple_test(node: ast.AST) -> bool:
-    return (
-        isinstance(node, SIMPLE_NODE)
-        or (
-            isinstance(node, ast.Compare)
-            and isinstance(node.left, SIMPLE_NODE)
-            and (
-                all(
-                    isinstance(_node, SIMPLE_NODE)
-                    for _node in node.comparators
-                )
-            )
-        )
+    return isinstance(node, SIMPLE_NODE) or (
+        isinstance(node, ast.Compare)
+        and isinstance(node.left, SIMPLE_NODE)
+        and (all(isinstance(_node, SIMPLE_NODE) for _node in node.comparators))
     )
 
 
@@ -90,7 +82,9 @@ def find_names(
         if isinstance(_node, ast.Name):
             names.add(
                 record_name_lineno_coloffset(
-                    _node, end_lineno, end_col_offset,
+                    _node,
+                    end_lineno,
+                    end_col_offset,
                 ),
             )
     return names
@@ -112,14 +106,13 @@ def process_assign(
     assignments: set[Token],
     related_vars: dict[str, list[Token]],
 ) -> None:
-    if (
-        len(node.targets) == 1
-        and isinstance(node.targets[0], ast.Name)
-    ):
+    if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
         target = node.targets[0]
         assignments.add(
             record_name_lineno_coloffset(
-                target, node.end_lineno, node.end_col_offset,
+                target,
+                node.end_lineno,
+                node.end_col_offset,
             ),
         )
         related_vars[target.id] = list(find_names(node.value))
@@ -138,36 +131,38 @@ def is_walrussable(
 ) -> bool:
     return (
         # check name doesn't appear between assignment and if statement
-        _assignment[0] not in [
-            sorted_names[i][0]
-            for i in range(assignment_idx+1, if_statement_idx)
-        ]
+        _assignment[0]
+        not in [sorted_names[i][0] for i in range(assignment_idx + 1, if_statement_idx)]
         # check it's the variable's only assignment
         and (len(_other_assignments) == 1)
         # check this is the first usage of this name
         and (
             name_lineno_coloffset(
                 _other_usages[0],
-            ) == name_lineno_coloffset(_assignment)
+            )
+            == name_lineno_coloffset(_assignment)
         )
         # check it's used at least somewhere else
         and (len(_other_usages) > 2)
         # check it doesn't appear anywhere else
         and not [
-            i for i in names
+            i
+            for i in names
             if (
-                name_lineno_coloffset(i) not in
-                name_lineno_coloffset_iterable(in_body_vars[_if_statement])
+                name_lineno_coloffset(i)
+                not in name_lineno_coloffset_iterable(in_body_vars[_if_statement])
             )
             and (
                 name_lineno_coloffset(
                     i,
-                ) != name_lineno_coloffset(_assignment)
+                )
+                != name_lineno_coloffset(_assignment)
             )
             and (
                 name_lineno_coloffset(
                     i,
-                ) != name_lineno_coloffset(_if_statement)
+                )
+                != name_lineno_coloffset(_if_statement)
             )
             and i[0] == _assignment[0]
         ]
@@ -186,10 +181,7 @@ def related_vars_are_unused(
     related = related_vars[name]
     should_break = False
     for rel in related:
-        usages = [
-            i for i in sorted_names if i[0]
-            == rel[0] if i != rel
-        ]
+        usages = [i for i in sorted_names if i[0] == rel[0] if i != rel]
         for usage in usages:
             rel_used_idx = name_lineno_coloffset_iterable(
                 sorted_names,
@@ -201,7 +193,6 @@ def related_vars_are_unused(
 
 def visit_function_def(
     node: ast.FunctionDef,
-    path: pathlib.Path,
 ) -> list[tuple[Token, Token]]:
     names = set()
     assignments: set[Token] = set()
@@ -239,13 +230,8 @@ def visit_function_def(
         if_statement_idx = name_lineno_coloffset_iterable(
             sorted_names,
         ).index(name_lineno_coloffset(_if_statement))
-        _other_assignments = [
-            i
-            for i in sorted_assignments if i[0] == _assignment[0]
-        ]
-        _other_usages = [
-            i for i in sorted_names if i[0] == _assignment[0]
-        ]
+        _other_assignments = [i for i in sorted_assignments if i[0] == _assignment[0]]
+        _other_usages = [i for i in sorted_names if i[0] == _assignment[0]]
         if is_walrussable(
             _assignment,
             _if_statement,
@@ -256,20 +242,20 @@ def visit_function_def(
             _other_usages,
             names,
             in_body_vars,
+        ) and related_vars_are_unused(
+            related_vars,
+            _assignment[0],
+            sorted_names,
+            assignment_idx,
+            if_statement_idx,
         ):
-            if related_vars_are_unused(
-                related_vars,
-                _assignment[0],
-                sorted_names,
-                assignment_idx,
-                if_statement_idx,
-            ):
-                walrus.append((_assignment, _if_statement))
+            walrus.append((_assignment, _if_statement))
     return walrus
 
 
 def auto_walrus(
-    content: str, path: pathlib.Path, line_length: int,
+    content: str,
+    line_length: int,
 ) -> str | None:
     lines = content.splitlines()
     try:
@@ -280,7 +266,7 @@ def auto_walrus(
     walruses = []
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
-            walruses.extend(visit_function_def(node, path))
+            walruses.extend(visit_function_def(node))
     lines_to_remove = []
     walruses = sorted(walruses, key=lambda x: (-x[1][1], -x[1][2]))
 
@@ -290,49 +276,49 @@ def auto_walrus(
     for _assignment, _if_statement in walruses:
         if _assignment[1] != _assignment[3]:
             continue
-        txt = lines[_assignment[1]-1][_assignment[2]:_assignment[4]]
-        if txt.count('=') > 1:
+        txt = lines[_assignment[1] - 1][_assignment[2] : _assignment[4]]
+        if txt.count("=") > 1:
             continue
-        line = lines[_if_statement[1]-1]
-        left_bit = line[:_if_statement[2]]
-        right_bit = line[_if_statement[4]:]
+        line = lines[_if_statement[1] - 1]
+        left_bit = line[: _if_statement[2]]
+        right_bit = line[_if_statement[4] :]
         no_paren = any(left_bit.endswith(i) for i in SEP_SYMBOLS) and any(
             right_bit.startswith(i) for i in SEP_SYMBOLS
         )
-        replace = txt.replace('=', ':=')
+        replace = txt.replace("=", ":=")
         if no_paren:
             line_with_walrus = left_bit + replace + right_bit
         else:
-            line_with_walrus = left_bit + '(' + replace + ')' + right_bit
+            line_with_walrus = left_bit + "(" + replace + ")" + right_bit
         if len(line_with_walrus) > line_length:
             # don't rewrite if it would split over multiple lines
             continue
         # replace assignment
         line_without_assignment = (
-            f'{lines[_assignment[1]-1][:_assignment[2]]}'
-            f'{lines[_assignment[1]-1][_assignment[4]:]}'
+            f"{lines[_assignment[1]-1][:_assignment[2]]}"
+            f"{lines[_assignment[1]-1][_assignment[4]:]}"
         )
-        if (
-            ENDS_WITH_COMMENT.search(lines[_assignment[1]-1]) is not None
-        ) or (
-            ENDS_WITH_COMMENT.search(lines[_if_statement[1]-1]) is not None
+        if (ENDS_WITH_COMMENT.search(lines[_assignment[1] - 1]) is not None) or (
+            ENDS_WITH_COMMENT.search(lines[_if_statement[1] - 1]) is not None
         ):
             continue
         lines[_assignment[1] - 1] = line_without_assignment
         # add walrus
-        lines[_if_statement[1]-1] = line_with_walrus
+        lines[_if_statement[1] - 1] = line_with_walrus
         # remove empty line
-        if not lines[_assignment[1]-1].strip():
-            lines_to_remove.append(_assignment[1]-1)
+        if not lines[_assignment[1] - 1].strip():
+            lines_to_remove.append(_assignment[1] - 1)
 
     newlines = [
-        line for i, line in enumerate(
+        line
+        for i, line in enumerate(
             lines,
-        ) if i not in lines_to_remove
+        )
+        if i not in lines_to_remove
     ]
-    newcontent = '\n'.join(newlines)
-    if newcontent and content.endswith('\n'):
-        newcontent += '\n'
+    newcontent = "\n".join(newlines)
+    if newcontent and content.endswith("\n"):
+        newcontent += "\n"
     if newcontent != content:
         return newcontent
     return None
@@ -348,11 +334,10 @@ def _get_config(paths: list[pathlib.Path]) -> dict[str, Any]:
     root = root.parent if root.is_file() else root
 
     while root != root.parent:
-
-        config_file = root / 'pyproject.toml'
+        config_file = root / "pyproject.toml"
         if config_file.is_file():
             config = tomllib.loads(config_file.read_text())
-            config = config.get('tool', {}).get('auto-walrus', {})
+            config = config.get("tool", {}).get("auto-walrus", {})
             if config:
                 return config
 
@@ -363,26 +348,26 @@ def _get_config(paths: list[pathlib.Path]) -> dict[str, Any]:
 
 def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
     parser = argparse.ArgumentParser()
-    parser.add_argument('paths', nargs='*')
+    parser.add_argument("paths", nargs="*")
     parser.add_argument(
-        '--files',
-        help='Regex pattern with which to match files to include',
+        "--files",
+        help="Regex pattern with which to match files to include",
         required=False,
-        default=r'',
+        default=r"",
     )
     parser.add_argument(
-        '--exclude',
-        help='Regex pattern with which to match files to exclude',
+        "--exclude",
+        help="Regex pattern with which to match files to exclude",
         required=False,
-        default=r'^$',
+        default=r"^$",
     )
     # black formatter's default
-    parser.add_argument('--line-length', type=int, default=88)
+    parser.add_argument("--line-length", type=int, default=88)
     args = parser.parse_args(argv)
     paths = [pathlib.Path(path).resolve() for path in args.paths]
 
     # Update defaults from pyproject.toml if present
-    config = {k.replace('-', '_'): v for k, v in _get_config(paths).items()}
+    config = {k.replace("-", "_"): v for k, v in _get_config(paths).items()}
     parser.set_defaults(**config)
     args = parser.parse_args(argv)
 
@@ -393,29 +378,31 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
             filepaths = iter((path,))
         else:
             filepaths = (
-                p for p in path.rglob('*')
+                p
+                for p in path.rglob("*")
                 if re.search(args.files, p.as_posix(), re.VERBOSE)
                 and not re.search(args.exclude, p.as_posix(), re.VERBOSE)
                 and not re.search(EXCLUDES, p.as_posix())
-                and p.suffix == '.py'
+                and p.suffix == ".py"
             )
 
         for filepath in filepaths:
             try:
-                with open(filepath, encoding='utf-8') as fd:
+                with open(filepath, encoding="utf-8") as fd:
                     content = fd.read()
             except UnicodeDecodeError:
                 continue
             new_content = auto_walrus(
-                content, filepath, line_length=args.line_length,
+                content,
+                line_length=args.line_length,
             )
             if new_content is not None and content != new_content:
-                sys.stdout.write(f'Rewriting {filepath}\n')
-                with open(filepath, 'w', encoding='utf-8') as fd:
+                sys.stdout.write(f"Rewriting {filepath}\n")
+                with open(filepath, "w", encoding="utf-8") as fd:
                     fd.write(new_content)
                 ret = 1
     return ret
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
