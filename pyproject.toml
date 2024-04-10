@@ -1,0 +1,90 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "auto-walrus"
+version = "0.3.0"
+authors = [
+  { name="Marco Gorelli", email="33491632+MarcoGorelli@users.noreply.github.com" },
+]
+description = "Automatically apply the awesome walrus operator"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/MarcoGorelli/auto-walrus"
+"Bug Tracker" = "https://github.com/MarcoGorelli/auto-walrus"
+
+[tool.ruff]
+line-length = 90
+fix = true
+target-version = "py38"
+
+lint.select = [
+  "ALL",
+]
+lint.ignore = [
+  'A001',
+  'A003',
+  'ANN101',
+  'ANN401',
+  'ARG002',  # todo: enable
+  'ARG003',  # todo: enable
+  'C901',
+  'COM812',
+  'D',
+  'DTZ',
+  'E501',
+  'EM101',  # todo: enable
+  'ERA001',  # todo: enable
+  'FBT003',  # todo: enable
+  'FIX',
+  'ICN001',
+  'ISC001',
+  'PD',
+  'PLR0911',
+  'PLR0912',
+  'PLR5501',
+  'PLR2004',
+  'PT011',
+  'PTH',
+  'RET505',
+  'S',
+  'SLF001',
+  'TD',
+  'TRY003',  # todo: enable
+  'TRY004'
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+
+[tool.black]
+line-length = 90
+
+[tool.pytest.ini_options]
+filterwarnings = [
+  "error",
+  'ignore:distutils Version classes are deprecated:DeprecationWarning',
+]
+xfail_strict = true
+markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
+
+[tool.coverage.run]
+plugins = ["covdefaults"]
+
+[tool.coverage.report]
+exclude_also = [
+  "> POLARS_VERSION",
+  "if sys.version_info() <",
+]
+
+[tool.mypy]
+strict = true
+
