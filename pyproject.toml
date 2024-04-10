@@ -17,6 +17,9 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[project.scripts]
+auto-walrus = "auto_walrus:main"
+
 [project.urls]
 "Homepage" = "https://github.com/MarcoGorelli/auto-walrus"
 "Bug Tracker" = "https://github.com/MarcoGorelli/auto-walrus"

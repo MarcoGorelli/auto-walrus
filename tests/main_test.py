@@ -158,8 +158,7 @@ def project_dir(request: Any, tmp_path: pathlib.Path) -> ProjectDirT:
     # |   └── c.py
     # └── pyproject.toml
 
-    config_content = request.node.get_closest_marker("config_content")
-    if config_content:
+    if (config_content := request.node.get_closest_marker("config_content")):
         (tmp_path / "pyproject.toml").write_text(config_content.args[0])
 
     python_files = [
