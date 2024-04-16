@@ -33,6 +33,8 @@ Sample `.pre-commit-config.yaml`:
     rev: 0.3.3
     hooks:
     -   id: auto-walrus
+        additional_dependencies:
+            - tomli
 ```
 
 ## Command-line example
