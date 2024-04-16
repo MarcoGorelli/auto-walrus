@@ -16,6 +16,9 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+    'tomli; python_version<"3.11"',
+]
 
 [project.scripts]
 auto-walrus = "auto_walrus:main"
