@@ -23,8 +23,8 @@ with open("pyproject.toml", "w", encoding="utf-8") as f:
 with open("README.md", encoding="utf-8") as f:
     content = f.read()
 content = content.replace(
-    f'rev: {old_version}',
-    f'rev: {version}',
+    f"rev: {old_version}",
+    f"rev: {version}",
 )
 with open("README.md", "w", encoding="utf-8") as f:
     f.write(content)
