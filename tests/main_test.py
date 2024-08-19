@@ -146,7 +146,7 @@ SRC_ORIG = "def foo():\n" "    a = 0\n" "    if a:\n" "        print(a)\n"
 SRC_CHANGED = "def foo():\n" "    if (a := 0):\n" "        print(a)\n"
 
 
-@pytest.fixture()
+@pytest.fixture
 def project_dir(request: Any, tmp_path: pathlib.Path) -> ProjectDirT:
     # tmp_path will be the root of the project, e.g.:
     # tmp_path
