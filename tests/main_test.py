@@ -15,12 +15,12 @@ from auto_walrus import main
     ("src", "expected"),
     [
         (
-            "def foo():\n" "    a = 0\n" "    if a:\n" "        print(a)\n",
-            "def foo():\n" "    if (a := 0):\n" "        print(a)\n",
+            "def foo():\n    a = 0\n    if a:\n        print(a)\n",
+            "def foo():\n    if (a := 0):\n        print(a)\n",
         ),
         (
-            "def foo():\n" "    a = 0\n" "    if a > 3:\n" "        print(a)\n",
-            "def foo():\n" "    if (a := 0) > 3:\n" "        print(a)\n",
+            "def foo():\n    a = 0\n    if a > 3:\n        print(a)\n",
+            "def foo():\n    if (a := 0) > 3:\n        print(a)\n",
         ),
         (
             "def foo():\n"
@@ -29,11 +29,7 @@ from auto_walrus import main
             "        print(a)\n"
             "    else:\n"
             "        pass\n",
-            "def foo():\n"
-            "    if (a := 0):\n"
-            "        print(a)\n"
-            "    else:\n"
-            "        pass\n",
+            "def foo():\n    if (a := 0):\n        print(a)\n    else:\n        pass\n",
         ),
         (
             "def foo():\n"
@@ -49,24 +45,20 @@ from auto_walrus import main
             "        print(a)\n",
         ),
         (
-            "def foo():\n"
-            "    a = 0\n"
-            "    print(0)\n"
-            "    if a:\n"
-            "        print(a)\n",
-            "def foo():\n" "    print(0)\n" "    if (a := 0):\n" "        print(a)\n",
+            "def foo():\n    a = 0\n    print(0)\n    if a:\n        print(a)\n",
+            "def foo():\n    print(0)\n    if (a := 0):\n        print(a)\n",
         ),
         (
-            "def foo():\n" "    a = 0\n" "    if (a):\n" "        print(a)\n",
-            "def foo():\n" "    if (a := 0):\n" "        print(a)\n",
+            "def foo():\n    a = 0\n    if (a):\n        print(a)\n",
+            "def foo():\n    if (a := 0):\n        print(a)\n",
         ),
         (
-            "def foo():\n" "    b = 0; a = 0\n" "    if a:\n" "        print(a)\n",
-            "def foo():\n" "    b = 0; \n" "    if (a := 0):\n" "        print(a)\n",
+            "def foo():\n    b = 0; a = 0\n    if a:\n        print(a)\n",
+            "def foo():\n    b = 0; \n    if (a := 0):\n        print(a)\n",
         ),
         (
-            "def foo():\n" "    a = 0\n" "    if a:\n" "        print(a)",
-            "def foo():\n" "    if (a := 0):\n" "        print(a)",
+            "def foo():\n    a = 0\n    if a:\n        print(a)",
+            "def foo():\n    if (a := 0):\n        print(a)",
         ),
         (
             "def foo():\n"
@@ -110,29 +102,26 @@ def test_rewrite(src: str, expected: str) -> None:
         "    b[0] = 1\n"
         "    if a:\n"
         "        print(a)\n",
-        "def foo():\n" "    a = 1\n" "    a = 2\n" "    if a:\n" "        print(a)\n",
-        "def foo():\n" "    a = (\n" "        0,)\n" "    if a:\n" "        print(a)\n",
-        "def foo():\n" "    a = (b==True)\n" "    if a:\n" "        print(a)\n",
+        "def foo():\n    a = 1\n    a = 2\n    if a:\n        print(a)\n",
+        "def foo():\n    a = (\n        0,)\n    if a:\n        print(a)\n",
+        "def foo():\n    a = (b==True)\n    if a:\n        print(a)\n",
         "def foo():\n"
         "    a = thequickbrownfoxjumpsoverthelazydog\n"
         "    if a:\n"
         "        print(a)\n",
-        "def foo():\n" "    a = 0  # no-walrus\n" "    if a:\n" "        print(a)\n",
-        "def foo():\n" "    a = 0\n" "    if a:  # no-walrus\n" "        print(a)\n",
-        "n = 10\n" "if foo(a := n+1):\n" "    print(n)\n",
-        "a = 0\n" "if False and a:\n" "    print(a)\n" "else:\n" "    print(a)\n",
-        "def foo():\n" "    a = 1\n" "    if a:\n" "        print(a)\n" "    a = 2\n",
+        "def foo():\n    a = 0  # no-walrus\n    if a:\n        print(a)\n",
+        "def foo():\n    a = 0\n    if a:  # no-walrus\n        print(a)\n",
+        "n = 10\nif foo(a := n+1):\n    print(n)\n",
+        "a = 0\nif False and a:\n    print(a)\nelse:\n    print(a)\n",
+        "def foo():\n    a = 1\n    if a:\n        print(a)\n    a = 2\n",
         "def foo():\n"
         "    n = 10\n"
         "    if True:\n"
         "        pass\n"
         "    elif foo(a := n+1):\n"
         "        print(n)\n",
-        "def foo():\n"
-        "    n = 10\n"
-        "    if n > np.sin(foo.bar.quox):\n"
-        "        print(n)\n",
-        "def foo():\n" "    n = 10\n" "    if True or n > 3:\n" "        print(n)\n",
+        "def foo():\n    n = 10\n    if n > np.sin(foo.bar.quox):\n        print(n)\n",
+        "def foo():\n    n = 10\n    if True or n > 3:\n        print(n)\n",
     ],
 )
 def test_noop(src: str) -> None:
@@ -142,8 +131,8 @@ def test_noop(src: str) -> None:
 
 ProjectDirT = Tuple[pathlib.Path, List[pathlib.Path]]
 
-SRC_ORIG = "def foo():\n" "    a = 0\n" "    if a:\n" "        print(a)\n"
-SRC_CHANGED = "def foo():\n" "    if (a := 0):\n" "        print(a)\n"
+SRC_ORIG = "def foo():\n    a = 0\n    if a:\n        print(a)\n"
+SRC_CHANGED = "def foo():\n    if (a := 0):\n        print(a)\n"
 
 
 @pytest.fixture
@@ -173,7 +162,7 @@ def project_dir(request: Any, tmp_path: pathlib.Path) -> ProjectDirT:
     return tmp_path, python_files
 
 
-PROJECT_CONFIG_EXCLUDE_A = "[tool.auto-walrus]\n" 'exclude = "/a"\n'
+PROJECT_CONFIG_EXCLUDE_A = '[tool.auto-walrus]\nexclude = "/a"\n'
 
 
 @pytest.mark.config_content(PROJECT_CONFIG_EXCLUDE_A)
