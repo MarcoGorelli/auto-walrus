@@ -295,8 +295,8 @@ def auto_walrus(
             continue
         # replace assignment
         line_without_assignment = (
-            f"{lines[_assignment[1]-1][:_assignment[2]]}"
-            f"{lines[_assignment[1]-1][_assignment[4]:]}"
+            f"{lines[_assignment[1] - 1][: _assignment[2]]}"
+            f"{lines[_assignment[1] - 1][_assignment[4] :]}"
         )
         if (ENDS_WITH_COMMENT.search(lines[_assignment[1] - 1]) is not None) or (
             ENDS_WITH_COMMENT.search(lines[_if_statement[1] - 1]) is not None
