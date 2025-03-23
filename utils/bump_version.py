@@ -1,5 +1,5 @@
 # mypy: ignore
-# ruff: noqa
+# ruff: noqa: INP001
 import re
 import subprocess
 import sys
@@ -29,6 +29,6 @@ content = content.replace(
 with open("README.md", "w", encoding="utf-8") as f:
     f.write(content)
 
-subprocess.run(["git", "commit", "-a", "-m", f"Bump version to {version}"])
-subprocess.run(["git", "tag", "-a", version, "-m", version])
-subprocess.run(["git", "push", "--follow-tags"])
+subprocess.run(["git", "commit", "-a", "-m", f"Bump version to {version}"], check=False)
+subprocess.run(["git", "tag", "-a", version, "-m", version], check=False)
+subprocess.run(["git", "push", "--follow-tags"], check=False)
