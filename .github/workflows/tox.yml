@@ -8,6 +8,7 @@ on:
 jobs:
   tox:
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         os: [windows-latest, ubuntu-latest]
@@ -28,7 +29,7 @@ jobs:
             ~\AppData\Local\pip\Cache
           key: ${{ runner.os }}-build-${{ matrix.python-version }}
       - name: install-tox
-        run: python -m pip install --upgrade tox virtualenv setuptools pip
+        run: python -m pip install --upgrade tox  # virtualenv setuptools pip
       - name: run-tox
         run: tox -e py
       - run: pipx run auto-walrus -h
