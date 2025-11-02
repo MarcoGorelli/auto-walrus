@@ -198,3 +198,14 @@ def test_config_file_missing(project_dir: ProjectDirT) -> None:
     main([str(project_root)])
     for file in files:
         assert file.read_text() == SRC_CHANGED, f"Unexpected result for {file}"
+
+
+def test_diff(project_dir: ProjectDirT, capsys: pytest.CaptureFixture[str]) -> None:
+    project_root, files = project_dir
+    main(["--diff", str(project_root)])
+    out = capsys.readouterr().out
+    for file in files:
+        assert file.read_text() == SRC_ORIG, f"Shouldn't have written {file}"
+        # Smells like diff markers
+        assert f"--- {file}" in out
+        assert f"+++ {file}" in out
