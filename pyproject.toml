@@ -80,7 +80,7 @@ filterwarnings = [
   'ignore:distutils Version classes are deprecated:DeprecationWarning',
 ]
 xfail_strict = true
-markers = ["config_content"]
+markers = ["config_content", "project_dir_name"]
 
 [tool.coverage.run]
 plugins = ["covdefaults"]

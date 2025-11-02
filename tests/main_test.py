@@ -147,6 +147,10 @@ def project_dir(request: Any, tmp_path: pathlib.Path) -> ProjectDirT:
     # |   └── c.py
     # └── pyproject.toml
 
+    if project_dir_name := request.node.get_closest_marker("project_dir_name"):
+        tmp_path = tmp_path / project_dir_name.args[0]
+        tmp_path.mkdir(parents=True)
+
     if config_content := request.node.get_closest_marker("config_content"):
         (tmp_path / "pyproject.toml").write_text(config_content.args[0])
 
@@ -194,6 +198,14 @@ def test_config_file_no_auto_walrus(project_dir: ProjectDirT) -> None:
 
 
 def test_config_file_missing(project_dir: ProjectDirT) -> None:
+    project_root, files = project_dir
+    main([str(project_root)])
+    for file in files:
+        assert file.read_text() == SRC_CHANGED, f"Unexpected result for {file}"
+
+
+@pytest.mark.project_dir_name("build/zoop")
+def test_project_in_subdirectory_that_would_be_ignored(project_dir: ProjectDirT) -> None:
     project_root, files = project_dir
     main([str(project_root)])
     for file in files:
