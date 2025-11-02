@@ -348,7 +348,7 @@ def _get_config(paths: list[pathlib.Path]) -> dict[str, Any]:
 
 def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
     parser = argparse.ArgumentParser()
-    parser.add_argument("paths", nargs="*")
+    parser.add_argument("paths", nargs="+", metavar="path")
     parser.add_argument(
         "--files",
         help="Regex pattern with which to match files to include",
