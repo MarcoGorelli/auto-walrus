@@ -382,7 +382,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
                 for p in path.rglob("*")
                 if re.search(args.files, p.as_posix(), re.VERBOSE)
                 and not re.search(args.exclude, p.as_posix(), re.VERBOSE)
-                and not re.search(EXCLUDES, p.as_posix())
+                and not re.search(EXCLUDES, p.relative_to(path).as_posix())
                 and p.suffix == ".py"
             )
 
