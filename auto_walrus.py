@@ -346,6 +346,18 @@ def _get_config(paths: list[pathlib.Path]) -> dict[str, Any]:
     return {}
 
 
+def print_diff(filepath: pathlib.Path, old_content: str, new_content: str) -> None:
+    import difflib
+
+    diff = difflib.unified_diff(
+        old_content.splitlines(keepends=True),
+        new_content.splitlines(keepends=True),
+        fromfile=str(filepath),
+        tofile=str(filepath),
+    )
+    sys.stdout.writelines(diff)
+
+
 def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
     parser = argparse.ArgumentParser()
     parser.add_argument("paths", nargs="*")
@@ -363,6 +375,11 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
     )
     # black formatter's default
     parser.add_argument("--line-length", type=int, default=88)
+    parser.add_argument(
+        "--diff",
+        action="store_true",
+        help="Show diff instead of writing changed files",
+    )
     args = parser.parse_args(argv)
     paths = [pathlib.Path(path).resolve() for path in args.paths]
 
@@ -397,6 +414,10 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
                 line_length=args.line_length,
             )
             if new_content is not None and content != new_content:
+                if args.diff:
+                    print_diff(filepath, content, new_content)
+                    ret = 1
+                    continue
                 sys.stdout.write(f"Rewriting {filepath}\n")
                 with open(filepath, "w", encoding="utf-8") as fd:
                     fd.write(new_content)
