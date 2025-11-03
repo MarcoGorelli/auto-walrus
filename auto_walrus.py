@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import dataclasses
 import os
 import pathlib
 import re
@@ -28,6 +29,11 @@ EXCLUDES = (
     r"_build|buck-out|build|dist|venv"
     r")/"
 )
+
+
+@dataclasses.dataclass
+class Config:
+    line_length: int
 
 
 def name_lineno_coloffset_iterable(
@@ -255,7 +261,7 @@ def visit_function_def(
 
 def auto_walrus(
     content: str,
-    line_length: int,
+    config: Config,
 ) -> str | None:
     lines = content.splitlines()
     try:
@@ -290,7 +296,7 @@ def auto_walrus(
             line_with_walrus = left_bit + replace + right_bit
         else:
             line_with_walrus = left_bit + "(" + replace + ")" + right_bit
-        if len(line_with_walrus) > line_length:
+        if len(line_with_walrus) > config.line_length:
             # don't rewrite if it would split over multiple lines
             continue
         # replace assignment
@@ -367,12 +373,13 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
     paths = [pathlib.Path(path).resolve() for path in args.paths]
 
     # Update defaults from pyproject.toml if present
-    config = {k.replace("-", "_"): v for k, v in _get_config(paths).items()}
-    parser.set_defaults(**config)
+    defaults = {k.replace("-", "_"): v for k, v in _get_config(paths).items()}
+    parser.set_defaults(**defaults)
     args = parser.parse_args(argv)
 
     ret = 0
 
+    config = Config(line_length=args.line_length)
     for path in paths:
         if path.is_file():
             filepaths = iter((path,))
@@ -392,10 +399,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
                     content = fd.read()
             except UnicodeDecodeError:
                 continue
-            new_content = auto_walrus(
-                content,
-                line_length=args.line_length,
-            )
+            new_content = auto_walrus(content, config)
             if new_content is not None and content != new_content:
                 sys.stdout.write(f"Rewriting {filepath}\n")
                 with open(filepath, "w", encoding="utf-8") as fd:

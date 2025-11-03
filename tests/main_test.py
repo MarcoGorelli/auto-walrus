@@ -89,7 +89,7 @@ from auto_walrus import main
     ],
 )
 def test_rewrite(src: str, expected: str) -> None:
-    ret = auto_walrus(src, 88)
+    ret = auto_walrus(src, Config(line_length=88))
     assert ret == expected
 
 
@@ -125,7 +125,7 @@ def test_rewrite(src: str, expected: str) -> None:
     ],
 )
 def test_noop(src: str) -> None:
-    ret = auto_walrus(src, 40)
+    ret = auto_walrus(src, Config(line_length=40))
     assert ret is None
 
 
