@@ -7,6 +7,7 @@ from typing import Tuple
 
 import pytest
 
+from auto_walrus import Config
 from auto_walrus import auto_walrus
 from auto_walrus import main
 
@@ -127,6 +128,20 @@ def test_rewrite(src: str, expected: str) -> None:
 def test_noop(src: str) -> None:
     ret = auto_walrus(src, 40)
     assert ret is None
+
+
+@pytest.mark.parametrize(
+    ("src", "expected"),
+    [
+        (
+            'def foo(data):\n    if True:\n        foo = data.get("blah")\n        if foo:\n            return foo\n    return data',
+            'def foo(data):\n    if True:\n        if (foo := data.get("blah")):\n            return foo\n    return data',
+        ),
+    ],
+)
+def test_rewrite_unsafe(src: str, expected: str) -> None:
+    ret = auto_walrus(src, Config(line_length=88, unsafe=True))
+    assert ret == expected
 
 
 ProjectDirT = Tuple[pathlib.Path, List[pathlib.Path]]
