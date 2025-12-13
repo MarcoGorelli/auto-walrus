@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import dataclasses
 import os
 import pathlib
 import re
@@ -28,6 +29,12 @@ EXCLUDES = (
     r"_build|buck-out|build|dist|venv"
     r")/"
 )
+
+
+@dataclasses.dataclass
+class Config:
+    line_length: int
+    unsafe: bool = False
 
 
 def name_lineno_coloffset_iterable(
@@ -193,6 +200,7 @@ def related_vars_are_unused(
 
 def visit_function_def(
     node: ast.FunctionDef,
+    config: Config,
 ) -> list[tuple[Token, Token]]:
     names = set()
     assignments: set[Token] = set()
@@ -204,7 +212,7 @@ def visit_function_def(
     related_vars: dict[str, list[Token]] = {}
     in_body_vars: dict[Token, set[Token]] = {}
 
-    for _node in node.body:
+    for _node in ast.walk(node) if config.unsafe else node.body:
         if isinstance(_node, ast.Assign):
             process_assign(_node, assignments, related_vars)
         elif isinstance(_node, ast.If):
@@ -255,8 +263,12 @@ def visit_function_def(
 
 def auto_walrus(
     content: str,
-    line_length: int,
+    config_or_line_length: int | Config,
 ) -> str | None:
+    if isinstance(config_or_line_length, Config):
+        config = config_or_line_length
+    else:
+        config = Config(line_length=config_or_line_length)
     lines = content.splitlines()
     try:
         tree = ast.parse(content)
@@ -266,7 +278,7 @@ def auto_walrus(
     walruses = []
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
-            walruses.extend(visit_function_def(node))
+            walruses.extend(visit_function_def(node, config))
     lines_to_remove = []
     walruses = sorted(walruses, key=lambda x: (-x[1][1], -x[1][2]))
 
@@ -290,7 +302,7 @@ def auto_walrus(
             line_with_walrus = left_bit + replace + right_bit
         else:
             line_with_walrus = left_bit + "(" + replace + ")" + right_bit
-        if len(line_with_walrus) > line_length:
+        if len(line_with_walrus) > config.line_length:
             # don't rewrite if it would split over multiple lines
             continue
         # replace assignment
@@ -361,6 +373,11 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
         required=False,
         default=r"^$",
     )
+    parser.add_argument(
+        "--unsafe",
+        action="store_true",
+        help="Also process if statements inside other blocks (like for loops)",
+    )
     # black formatter's default
     parser.add_argument("--line-length", type=int, default=88)
     args = parser.parse_args(argv)
@@ -394,7 +411,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover
                 continue
             new_content = auto_walrus(
                 content,
-                line_length=args.line_length,
+                Config(line_length=args.line_length, unsafe=args.unsafe),
             )
             if new_content is not None and content != new_content:
                 sys.stdout.write(f"Rewriting {filepath}\n")
