@@ -225,3 +225,10 @@ def test_project_in_subdirectory_that_would_be_ignored(project_dir: ProjectDirT)
     main([str(project_root)])
     for file in files:
         assert file.read_text() == SRC_CHANGED, f"Unexpected result for {file}"
+
+
+def test_complains_when_no_paths(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as ei:
+        main([])
+    assert ei.value.code == 2
+    assert "the following arguments are required" in capsys.readouterr().err
