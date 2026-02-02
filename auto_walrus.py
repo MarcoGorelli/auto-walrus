@@ -271,12 +271,12 @@ def auto_walrus(
     except SyntaxError:  # pragma: no cover
         return None
 
-    walruses = []
+    walrus_set: set[tuple[Token, Token]] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
-            walruses.extend(visit_function_def(node, config))
+            walrus_set.update(visit_function_def(node, config))
     lines_to_remove = []
-    walruses = sorted(walruses, key=lambda x: (-x[1][1], -x[1][2]))
+    walruses = sorted(walrus_set, key=lambda x: (-x[1][1], -x[1][2]))
 
     if not walruses:
         return None

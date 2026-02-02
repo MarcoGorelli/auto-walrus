@@ -137,6 +137,20 @@ def test_noop(src: str) -> None:
             'def foo(data):\n    if True:\n        foo = data.get("blah")\n        if foo:\n            return foo\n    return data',
             'def foo(data):\n    if True:\n        if (foo := data.get("blah")):\n            return foo\n    return data',
         ),
+        # Nested functions - issue #89
+        (
+            "def foo():\n"
+            "    def bar():\n"
+            "        def quox():\n"
+            "            conn_time_zone = fetch_rel_time_zone(df.native)\n"
+            "            if conn_time_zone != time_zone:\n"
+            "                print(conn_time_zone)\n",
+            "def foo():\n"
+            "    def bar():\n"
+            "        def quox():\n"
+            "            if (conn_time_zone := fetch_rel_time_zone(df.native)) != time_zone:\n"
+            "                print(conn_time_zone)\n",
+        ),
     ],
 )
 def test_rewrite_unsafe(src: str, expected: str) -> None:
