@@ -38,11 +38,9 @@ lint.select = [
 lint.ignore = [
   'A001',
   'A003',
-  'ANN101',
   'ANN401',
   'ARG002',  # todo: enable
   'ARG003',  # todo: enable
-  'C901',
   'COM812',
   'D',
   'DTZ',
@@ -54,11 +52,6 @@ lint.ignore = [
   'ICN001',
   'ISC001',
   'PD',
-  'PLR0911',
-  'PLR0912',
-  'PLR5501',
-  'PLR2004',
-  'PT011',
   'PTH',
   'RET505',
   'S',
@@ -70,6 +63,13 @@ lint.ignore = [
 
 [tool.ruff.lint.isort]
 force-single-line = true
+
+[tool.ruff.lint.mccabe]
+max-complexity = 14  # Default is 10
+
+[tool.ruff.lint.pylint]
+allow-magic-value-types = ["int", "str"]
+max-branches = 14  # Default is 12
 
 [tool.black]
 line-length = 90
